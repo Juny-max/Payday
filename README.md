@@ -69,7 +69,7 @@ Financial records and the optional Gemini key are encrypted using Windows creden
 
 Settings includes a confirmed reset and access to the Windows uninstall wizard. Leave data deletion selected during uninstall to remove Payday's local records and caches. Normal app updates preserve your records.
 
-Downloaded installers, your source checkout and backups stored elsewhere are separate files. See [SECURITY.md](SECURITY.md) for credential and release handling.
+Downloaded installers, your source checkout and backups stored elsewhere are separate files. See [SECURITY.md](SECURITY.md) for the public security policy and practical precautions, and [CONTRIBUTING.md](CONTRIBUTING.md) for development and publishing instructions.
 
 ## Build it locally
 
