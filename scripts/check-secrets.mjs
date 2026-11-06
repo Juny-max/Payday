@@ -5,7 +5,7 @@ const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const roots=['src','electron','public','build','tests','scripts','.github'];
 const top=['.gitignore','package.json','package-lock.json','index.html','tsconfig.json','vite.config.ts','README.md','SECURITY.md','LICENSE'];
 const omitted=new Set(['electron/model.cjs','scripts/probe-gemini.cjs','scripts/probe-gemini.mjs','scripts/design-compare.mjs']);
-const binary=new Set(['public/icon.ico','public/icon.png']);
+const binary=new Set(['public/icon.ico','public/icon.png','public/logo-source.png']);
 async function walk(dir){let result=[];for(const entry of await readdir(path.join(root,dir),{withFileTypes:true})){const name=`${dir}/${entry.name}`;if(entry.isSymbolicLink())throw Error(`Symlink rejected: ${name}`);if(omitted.has(name))continue;result.push(...entry.isDirectory()?await walk(name):[name]);}return result;}
 export async function reviewFiles(){
  const files=[...top];for(const dir of roots)files.push(...await walk(dir));

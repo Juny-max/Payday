@@ -1,4 +1,4 @@
-<p align="center"><img src="public/icon.svg" width="76" alt="Payday app icon" /></p>
+<p align="center"><img src="public/icon.png" width="76" alt="Payday app icon" /></p>
 <h1 align="center">Payday</h1>
 <p align="center"><strong>Give your money a plan. Get on with your month.</strong></p>
 <p align="center">A Windows desktop budgeting app for payday decisions, occasional adjustments, and the things you want to build towards.</p>

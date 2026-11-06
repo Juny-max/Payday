@@ -1,6 +1,6 @@
 {
   "name": "payday-desktop",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "description": "A calmer payday. Offline-first budgeting for Ghana.",
   "author": "Payday",
@@ -23,7 +23,8 @@
     "verify:security": "node scripts/verify-security.mjs",
     "verify:features": "node scripts/verify-features.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
-    "pretest": "node scripts/build-model.mjs"
+    "pretest": "node scripts/build-model.mjs",
+    "icons": "node scripts/make-icon.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",
@@ -64,7 +65,8 @@
       "dist/**/*",
       "electron/**/*",
       "public/icon.png",
-      "LICENSE"
+      "LICENSE",
+      "public/icon.ico"
     ],
     "win": {
       "icon": "public/icon.ico",
