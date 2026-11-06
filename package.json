@@ -63,7 +63,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "public/icon.png"
+      "public/icon.png",
+      "LICENSE"
     ],
     "win": {
       "icon": "public/icon.ico",
