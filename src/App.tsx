@@ -972,9 +972,9 @@ export default function App() {
               {proposedPlan && <div className="chat-bubble assistant"><strong>Budget proposal ready</strong><p>Your saved allocations stay unchanged until you review and save.</p><button className="primary" onClick={() => { setDraft(committed && !aiInDraft ? {...proposedPlan, id: nextPaydayPlan(p).id} : proposedPlan); setProposedPlan(null); setModal("payday"); }}>Review proposed budget <ArrowRight size={16}/></button></div>}
               <div ref={chatEnd} />
             </div>
-            <form className="chat-composer" onSubmit={e => { e.preventDefault(); if(hasKey) void runAI(); else openSettings(); }}>
+            <form className="chat-composer" onSubmit={e => { e.preventDefault(); if(hasKey) void runAI(); else openSettings("gemini"); }}>
               <p className="chat-context"><LockKeyhole size={13}/> When you send: your message, recent chat, selected budget, savings balance and self-debt go to Gemini. No bank login or API key is included in the chat.</p>
-              <div className="chat-input-row"><textarea aria-label="Tell your payday co-pilot about your month" value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={6000} placeholder="Message your co-pilot..." rows={2} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if(!busy && prompt.trim()) { if(hasKey) void runAI(); else openSettings(); } } }}/><button type="submit" className="primary" disabled={busy || saving || (hasKey && !prompt.trim())} aria-label={hasKey ? "Send message" : "Connect Gemini"}>{busy ? <LoaderCircle className="spin" size={20}/> : <ArrowUpRight size={22}/>}<span>{hasKey ? "Send" : "Connect Gemini"}</span></button></div>
+              <div className="chat-input-row"><textarea aria-label="Tell your payday co-pilot about your month" value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={6000} placeholder="Message your co-pilot..." rows={2} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if(!busy && prompt.trim()) { if(hasKey) void runAI(); else openSettings("gemini"); } } }}/><button type="submit" className="primary" disabled={busy || saving || (hasKey && !prompt.trim())} aria-label={hasKey ? "Send message" : "Connect Gemini"}>{busy ? <LoaderCircle className="spin" size={20}/> : <ArrowUpRight size={22}/>}<span>{hasKey ? "Send" : "Connect Gemini"}</span></button></div>
             </form>
           </section>
         )}
@@ -982,7 +982,7 @@ export default function App() {
           <div className="settings-page">
             <header className="settings-page-heading">
               <div><span className="settings-eyebrow">MAKE IT YOURS</span><h1>Settings</h1><p>Your accounts, your assistant, and your data.</p></div>
-              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.5.0"}</span>
+              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.5.1"}</span>
             </header>
             <nav className="settings-links" aria-label="Settings sections" role="tablist">
               {[{id:"accounts",name:"Accounts",Icon:Wallet},{id:"currency",name:"Currency",Icon:Banknote},{id:"gemini",name:"AI co-pilot",Icon:Sparkles},{id:"backup",name:"Backups & storage",Icon:ShieldCheck},{id:"updates",name:"Updates",Icon:Download},{id:"reset",name:"Reset & uninstall",Icon:RefreshCw}].map(({id,name,Icon},index)=><button key={id} type="button" id={`settings-tab-${id}`} role="tab" aria-selected={settingsTab===id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab===id?0:-1} onClick={()=>setSettingsTab(id)} onKeyDown={event=>{const tabs=["accounts","currency","gemini","backup","updates","reset"];let next=index;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;else return;event.preventDefault();setSettingsTab(tabs[next]);document.getElementById(`settings-tab-${tabs[next]}`)?.focus();}}><Icon size={16}/>{name}</button>)}
