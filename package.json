@@ -1,0 +1,97 @@
+{
+  "name": "payday-desktop",
+  "version": "1.4.7",
+  "private": true,
+  "description": "A calmer payday. Offline-first budgeting for Ghana.",
+  "author": "Payday",
+  "type": "module",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "postinstall": "node node_modules/electron/install.js",
+    "format": "prettier --write src electron tests scripts vite.config.ts",
+    "verify:ui": "node scripts/verify-ui.mjs",
+    "verify:desktop": "node scripts/verify-desktop.mjs",
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"wait-on http://127.0.0.1:5173 && node scripts/launch.mjs --dev\"",
+    "dev:web": "vite --host 127.0.0.1",
+    "build": "tsc -b && node scripts/build-model.mjs && vite build",
+    "test": "tsx --test tests/*.test.ts",
+    "dist": "npm run build && node scripts/package-windows.mjs",
+    "start": "node scripts/launch.mjs",
+    "predev": "node scripts/build-model.mjs",
+    "prestart": "node scripts/build-model.mjs",
+    "verify:budget": "node scripts/verify-budgeting.mjs",
+    "verify:security": "node scripts/verify-security.mjs",
+    "verify:features": "node scripts/verify-features.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "pretest": "node scripts/build-model.mjs"
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "electron-updater": "6.8.11",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@fontsource-variable/manrope": "^5.3.0",
+    "@phosphor-icons/react": "^2.1.10",
+    "@playwright/test": "^1.49.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.0",
+    "electron": "^45.2.3",
+    "electron-builder": "^26.0.0",
+    "png-to-ico": "^2.1.8",
+    "prettier": "^3.9.10",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.10.1",
+    "sharp": "^0.35.5",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.payday.desktop",
+    "productName": "Payday",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "public/icon.png"
+    ],
+    "win": {
+      "icon": "public/icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "include": "build/uninstall.nsh",
+      "deleteAppDataOnUninstall": false,
+      "uninstallDisplayName": "Payday ${version}",
+      "createStartMenuShortcut": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Juny-max",
+        "repo": "Payday",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "overrides": {
+    "minimatch@>=7.0.0 <11.0.1": "^11.0.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Juny-max/Payday.git"
+  }
+}

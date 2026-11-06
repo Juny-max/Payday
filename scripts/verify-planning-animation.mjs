@@ -1,0 +1,9 @@
+import {_electron as electron} from '@playwright/test';
+import assert from 'node:assert/strict';
+const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
+const app=await electron.launch({args:['scripts/ai-ui-harness.cjs'],env});
+try{
+ const page=await app.firstWindow();await page.getByRole('button',{name:'Accounts',exact:true}).click();assert.equal(await page.getByText('A plan for your money, not another chore.',{exact:true}).count(),0);assert.equal(await page.getByText('Emergency pocket',{exact:false}).count(),0);
+ await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByPlaceholder('Paste your GEMINI_API_KEY').fill('test-key');await page.getByRole('button',{name:'Save key',exact:true}).click();await page.getByText('Key saved',{exact:true}).waitFor();await page.getByRole('button',{name:'Payday co-pilot',exact:true}).click();await page.getByRole('textbox',{name:'Tell your payday co-pilot about your month'}).fill('build my budget');await page.getByRole('button',{name:'Send message',exact:true}).click();await page.getByRole('status',{name:'Co-pilot is preparing your budget',exact:true}).waitFor();assert.equal(await page.getByRole('status',{name:'Co-pilot is typing',exact:true}).count(),0);await page.screenshot({path:'artifacts/budget-working-1.4.6.png'});await page.getByText('Please tell me your take-home salary so we can plan.',{exact:true}).waitFor();assert.equal(await page.getByRole('status',{name:'Co-pilot is preparing your budget',exact:true}).count(),0);assert.equal((await page.evaluate(()=>window.payday.load())).vault,null);
+ console.log('PASS: Accounts panel removed; budget requests show preparation animation rather than typing; waiting clears after response; financial records untouched. Mock provider, isolated vault.');
+}finally{await app.close();}
