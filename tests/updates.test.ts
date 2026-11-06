@@ -14,3 +14,14 @@ test("development update checks do not contact network",async()=>{const {updater
 test("available update requires explicit download, tracks progress and flushes saves before restart",async()=>{const f=fixture();await assert.rejects(f.service.install());f.updater.checkForUpdates=async()=>{f.updater.emit("update-available",{version:"1.4.8"});};assert.equal((await f.service.check()).status,"available");let installed=false;f.updater.downloadUpdate=async()=>{f.updater.emit("download-progress",{percent:42});assert.equal(f.service.get().percent,42);f.updater.emit("update-downloaded",{version:"1.4.8"});};assert.equal((await f.service.download()).status,"ready");f.updater.quitAndInstall=(silent:boolean,run:boolean)=>{assert.ok(f.isFlushed());assert.equal(silent,true);assert.equal(run,true);installed=true;};await f.service.install();assert.ok(installed);assert.equal(f.service.get().status,"installing");});
 test("failed verification prevents install and does not expose raw error details",async()=>{const {service,updater}=fixture();updater.emit("update-available",{version:"1.4.8"});updater.downloadUpdate=async()=>{throw Error("sha512 failed at private local path");};const result=await service.download();assert.equal(result.status,"error");assert.match(result.message,/could not be verified/);assert.ok(!result.message.includes("private local path"));await assert.rejects(service.install());});
 test("offline/missing release errors are recoverable and duplicate checks are suppressed",async()=>{const {service,updater}=fixture();let calls=0,release:()=>void=()=>{};updater.checkForUpdates=async()=>{calls++;await new Promise<void>(r=>{release=r;});throw Error("404 latest.yml");};const check=service.check();await service.check();assert.equal(calls,1);release();await check;assert.equal(service.get().status,"error");updater.checkForUpdates=async()=>{updater.emit("update-not-available",{});};assert.equal((await service.check()).status,"current");});
+
+test("background failures stay quiet and an offered update is not cleared",async()=>{
+ const {service,updater}=fixture();let requests=0;
+ updater.checkForUpdates=async()=>{requests++;throw Error("offline");};
+ assert.equal((await service.check({quiet:true})).status,"idle");
+ updater.emit("update-available",{version:"1.5.4"});
+ assert.equal((await service.check({quiet:true})).version,"1.5.4");
+ assert.equal(requests,1);
+ assert.equal((await service.check()).status,"error");
+ assert.equal(service.get().version,"1.5.4");
+});

@@ -45,7 +45,7 @@ The default account names reflect Payday's Ghanaian origins. Rename them in Sett
 - Export and restore an encrypted backup.
 - Switch between real Settings panels for accounts, currency, AI, backups and updates.
 - View GHS records in USD or GBP with dated, cached exchange rates.
-- Check, download and install updates from Settings when you choose.
+- Get a Settings badge when an update is available, then choose when to download and install.
 
 ## Currency preferences
 
@@ -88,7 +88,7 @@ Installers and update metadata are generated in `release/`. Generated builds, ca
 
 ## Releases
 
-The public update feed is hosted in [GitHub Releases](https://github.com/Juny-max/Payday/releases). A version change on `main` runs the Windows release workflow, including secret scanning, tests and packaging. The workflow uses GitHub's temporary token; no personal publishing token belongs in the app or source.
+The public update feed is hosted in [GitHub Releases](https://github.com/Juny-max/Payday/releases). Installed Payday checks shortly after launch (about 20 seconds), then every six hours while open. Waking or focusing the app checks only when overdue. Background connection failures stay quiet and no installer downloads automatically. An Update badge on Settings opens the Updates panel directly; Ready means the downloaded update can be installed. There is no update service running when Payday is closed. A version change on `main` runs the Windows release workflow, including secret scanning, tests and packaging. The workflow uses GitHub's temporary token; no personal publishing token belongs in the app or source.
 
 Older versions without update support need one manual installation of version 1.4.7 or later. After that, use **Settings > Updates**. Current Windows builds are unsigned; download only from this repository's releases.
 

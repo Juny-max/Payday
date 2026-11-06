@@ -5,6 +5,7 @@ const {
   safeStorage,
   dialog,
   nativeTheme,
+  powerMonitor,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -65,6 +66,9 @@ if (!app.requestSingleInstanceLock()) {
       notify: state => { if(win && !win.isDestroyed()) win.webContents.send("updates:status", state); },
       beforeInstall: async () => { await writeQueue; },
     });
+    const updateSchedule = require("./update-scheduler.cjs").createUpdateScheduler({enabled:app.isPackaged,updates});
+    powerMonitor.on("resume",updateSchedule.wake);
+    app.once("before-quit",()=>{updateSchedule.stop();powerMonitor.removeListener("resume",updateSchedule.wake);});
     ipcMain.handle("currency:rates", async e => { trusted(e); try { return await require("./exchange.cjs").fetchRates(); } catch { throw new Error("Could not refresh exchange rates. Keep your saved rates or enter rates manually."); } });
     ipcMain.handle("updates:get", e => {trusted(e); return updates.get();});
     ipcMain.handle("updates:check", e => {trusted(e); return updates.check();});
@@ -218,6 +222,7 @@ if (!app.requestSingleInstanceLock()) {
           sandbox: true,
         },
       });
+      win.on("focus",updateSchedule.wake);
       win.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
       win.once("ready-to-show", () => win.show());
       win.webContents.on("will-navigate", (e, url) => {
@@ -243,6 +248,7 @@ if (!app.requestSingleInstanceLock()) {
         : win.loadFile(path.join(__dirname, "../dist/index.html"));
     };
     create();
+    updateSchedule.start();
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) create();
     });
