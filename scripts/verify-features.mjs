@@ -12,7 +12,7 @@ try {
   const page = await app.firstWindow(),
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.getByRole("button", { name: "Plan payday", exact: true }).click();
+  await page.getByRole("button", { name: "Start payday allocation", exact: true }).click();
   await page.getByLabel("Payday month", { exact: true }).fill("2026-11");
   await page.getByRole("spinbutton", { name: "Take-home salary" }).fill("3000");
   await page.getByRole("spinbutton", { name: "Days per week" }).fill("5");
@@ -116,7 +116,7 @@ try {
   assert.equal(await readFile(sentinel, "utf8"), "Keep this unrelated file");
   await page.reload();
   await page
-    .getByRole("button", { name: "Plan payday", exact: true })
+    .getByRole("button", { name: "Start payday allocation", exact: true })
     .waitFor();
   assert.equal(
     (await page.evaluate(() => window.payday.load())).vault.history.length,

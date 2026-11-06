@@ -1,0 +1,67 @@
+/* Payday's cobalt identity. Account/status colours retain their meaning. */
+:root { --brand:#2563eb; --brand-strong:#1d4ed8; --brand-soft:#eff6ff; --payday-header-height:80px; background:#f8fafc; color:#0f172a; }
+body {background:#f8fafc;}
+#root h1,#root h2,#root h3 {color:#0f172a;}
+#root .topbar {height:var(--payday-header-height);border-color:#e2e8f0;}
+#root .glass,#root .panel,#root .dock {border-color:#e2e8f0;}
+#root .primary {background:var(--brand);border-color:var(--brand);color:#fff;}
+#root .primary:hover {background:var(--brand-strong);border-color:var(--brand-strong);}
+#root .primary:disabled {opacity:.5;}
+#root .secondary {color:#334155;border-color:#dbe3ef;background:#fff;}
+#root .secondary:hover {background:#eff6ff;border-color:#bfdbfe;}
+#root button:focus-visible,#root a:focus-visible,#root input:focus-visible,#root select:focus-visible,#root textarea:focus-visible {outline-color:#2563eb80;}
+#root .dock > button.selected,#root .dock > button.selected:hover {background:#dbeafe;color:#1d4ed8;}
+#root .dock > button:hover {background:#eff6ff;color:#1d4ed8;}
+#root .greeting-avatar,#root .chat-avatar,#root .spark-icon,#root .settings-card-icon,#root .setting-title > svg {background:#eff6ff;color:#2563eb;border-color:#dbeafe;}
+#root .greeting-period,#root .brand-dot,#root .sidebar-brand > span > span {color:#2563eb;}
+#root .savings-card {background:linear-gradient(135deg,#2563eb,#1d4ed8);border-color:#2563eb;color:#fff;}
+#root .savings-card * {color:inherit;}
+#root .savings-top > span {background:#ffffff14;border-color:#ffffff55;}
+#root .savings-metrics > div {background:#ffffff1c;border-color:#ffffff30;}
+#root .savings-metrics span {color:#dbeafe;}
+#root .balance-circle {background:#2563eb;color:#fff;}
+#root .wishlist-copilot,#root .locked-total,#root .data-toggle-row {background:#eff6ff;border-color:#dbeafe;color:#1d4ed8;}
+#root .settings-eyebrow,#root .settings-links button[aria-selected="true"],#root .settings-version {color:#1d4ed8;}
+#root .settings-links,#root .settings-version {background:#eff6ff;border-color:#dbeafe;}
+#root .settings-links button {color:#475569;}
+#root .settings-links button[aria-selected="true"] {background:#fff;}
+#root .rate-summary,#root .currency-view-notice {background:#eff6ff;border-color:#dbeafe;color:#1e40af;}
+#root .currency-view-notice button {color:#1d4ed8;}
+#root .budget-working,#root .explanation {background:linear-gradient(135deg,#fff,#eff6ff);border-color:#bfdbfe;color:#1e40af;}
+#root .budget-working-top strong {color:#1e40af;}
+#root .budget-orbit {background:#dbeafe;color:#2563eb;}
+#root .budget-orbit i {border-color:#dbeafe;border-top-color:#2563eb;border-right-color:#93c5fd;}
+#root .budget-preview span {background-image:linear-gradient(90deg,#bfdbfe,#eff6ff,#bfdbfe);}
+#root input[type="range"],#root input[type="checkbox"] {accent-color:#2563eb;}
+#root .weekday-picker button[aria-pressed="true"] {background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
+#root .muted,#root .subtitle,#root .settings-note {color:#64748b;}
+/* Chat occupies the workspace, rather than a floating card inside it. */
+#root main.chat-main {padding:0;max-width:none;height:calc(100dvh - var(--payday-header-height));min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#fff;}
+#root main.chat-main .chat-page,#root main.chat-main:has(.currency-view-notice) .chat-page {border:0;border-radius:0;height:auto;min-height:0;flex:1;box-shadow:none;}
+#root .chat-header {padding:20px 30px;background:#fff;flex-shrink:0;}
+#root .chat-messages {background:#fff;padding:26px 30px;}
+#root .chat-bubble {background:#f1f5f9;border-color:transparent;box-shadow:none;color:#0f172a;}
+#root .chat-bubble.user {background:#dbeafe;border-color:#bfdbfe;color:#1e3a8a;}
+#root .chat-bubble small {color:#64748b;}
+#root .chat-composer {flex-shrink:0;padding:16px 30px 22px;}
+#root .chat-input-row textarea {background:#f8fafc;border-color:#dbe3ef;}
+#root .chat-typing span {background:#2563eb;}
+#root main.chat-main .currency-view-notice {margin:12px 24px 0;flex-shrink:0;}
+/* A guided, non-destructive first-use tour. */
+.tour-layer {position:fixed;inset:0;z-index:10000;}
+.tour-spotlight {position:fixed;border:2px solid #93c5fd;border-radius:20px;box-shadow:0 0 0 9999px #0f172a80,0 0 0 5px #2563eb20;pointer-events:none;}
+.tour-popover {position:fixed;width:min(380px,calc(100vw - 32px));padding:23px;background:#fff;border:1px solid #dbeafe;border-radius:22px;box-shadow:0 16px 70px #0f172a26;max-height:calc(100dvh - 32px);overflow:auto;}
+.tour-meta {display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;color:#2563eb;font-size:10px;font-weight:800;letter-spacing:1.2px;}
+#root .tour-popover h2 {font-size:20px;line-height:1.4;letter-spacing:-.5px;margin:0 0 12px;}
+.tour-popover > p {font-size:13px;line-height:1.85;color:#64748b;margin:0;}
+.tour-progress {height:4px;background:#eff6ff;border-radius:99px;margin:20px 0;overflow:hidden;}
+.tour-progress i {display:block;height:100%;background:#2563eb;border-radius:99px;}
+.tour-actions {display:flex;justify-content:space-between;gap:12px;}
+.tour-actions button {font-size:12px;padding:11px 16px;}
+@media(max-width:700px) {#root .chat-header {padding:16px;}#root .chat-messages {padding:18px 16px;}#root .chat-composer {padding:12px 16px;} .tour-popover {padding:20px;}}
+
+#root .dock > button:not(.selected) {color:#64748b;}
+#root .nav-caption {color:#64748b;}
+#root .balance-circle {border-color:#2563eb;}
+#root .allocation-hover-detail {background:#f8fafc;border-color:#e2e8f0;color:#64748b;}
+#root .soft-tag {background:#eff6ff;border-color:#dbeafe;color:#1e40af;}

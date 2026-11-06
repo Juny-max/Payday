@@ -17,7 +17,7 @@ try {
     await page.evaluate(() => typeof window.payday.load),
     "function",
   );
-  await page.getByRole("button", { name: "Plan payday", exact: true }).click();
+  await page.getByRole("button", { name: "Start payday allocation", exact: true }).click();
   await page.getByRole("spinbutton", { name: "Take-home salary" }).fill("3000");
   await page
     .getByRole("spinbutton", { name: "Daily in & out fare" })

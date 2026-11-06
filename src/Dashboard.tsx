@@ -143,7 +143,7 @@ export function AllocationCard({
                 : `${Math.round(((plan.salary - left) / plan.salary) * 100)}%`}
           </strong>
           <small>
-            {plan.salary === 0 ? "Enter your pay to start" : "of this payday"}
+            {plan.salary > 0 ? "of this payday" : ""}
           </small>
         </div>
       </div>
@@ -291,10 +291,7 @@ export default function Dashboard({
               <Wallet size={15} />
               {symbol} <span>{label}</span>
             </span>
-            <span className={`plan-status ${committed ? "saved" : ""}`}>
-              <i />
-              {committed ? "Payday saved" : "Draft plan"}
-            </span>
+            {committed && <span className="plan-status saved"><i/>Payday saved</span>}
           </div>
           <p className="balance-caption">Your monthly payday</p>
           <h2 className="balance-value">
@@ -304,10 +301,10 @@ export default function Dashboard({
           <div className="balance-context">
             <CalendarBlank size={14} />
             {month}
-            <span>•</span>
+            {p.salary > 0 && <span>•</span>}
             <span>
               {p.salary === 0
-                ? "Enter your pay to start"
+                ? ""
                 : left === 0
                   ? "Fully allocated"
                   : `${cash(Math.max(0, left))} unallocated`}
@@ -353,7 +350,7 @@ export default function Dashboard({
             <span>{names.gcb}</span>
           </div>
           <h2>{cash(vault.savingsBalance)}</h2>
-          <p>Small steps. A stronger tomorrow.</p>
+
           <div className="savings-metrics">
             <div>
               <span>This payday</span>

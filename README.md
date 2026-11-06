@@ -25,6 +25,8 @@ The default account names reflect Payday's Ghanaian origins. Rename them in Sett
 
 ## Getting started
 
+On first use, a guided tour explains each part of Payday. You can skip it or restart it anytime from **Help & getting started**.
+
 1. [Download the latest Windows installer](https://github.com/Juny-max/Payday/releases/latest) and install Payday.
 2. Start a payday. Enter your take-home salary, daily return fare, and work weekdays.
 3. Review the offline suggestion and adjust your allocations.

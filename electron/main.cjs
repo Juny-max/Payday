@@ -78,8 +78,10 @@ if (!app.requestSingleInstanceLock()) {
       trusted(e);
       const v = await enqueue(() => vaultStorage.read());
       const k = await read("payday-key.json");
-      return { vault: v ? vault.parse(v) : null, hasKey: !!k?.encrypted };
+      const onboarding=await read("payday-onboarding.json").catch(()=>({seen:true}));
+      return { vault: v ? vault.parse(v) : null, hasKey: !!k?.encrypted, showTour: !v && !k?.encrypted && !onboarding?.seen };
     });
+    ipcMain.handle("tour:seen", async e => {trusted(e);await enqueue(()=>atomic("payday-onboarding.json",{seen:true}));});
     ipcMain.handle("vault:save", async (e, v) => {
       trusted(e);
       const valid = vault.parse(v);

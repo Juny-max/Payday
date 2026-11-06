@@ -25,3 +25,5 @@ tsconfig.tsbuildinfo
 scripts/probe-gemini.*
 scripts/design-compare.mjs
 design-qa.md
+
+payday-onboarding.json

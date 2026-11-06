@@ -29,6 +29,7 @@ import {
   Archive,
   CalendarBlank,
 } from "@phosphor-icons/react";
+import GuidedTour,{tourSteps} from "./Tour";
 import {CurrencyProvider,CurrencySettings,currencyPresentation,useCurrency} from "./Currency";
 import { storage, type UpdateState } from "./bridge";
 import { accountReport, type AccountKey } from "./account-report";
@@ -64,7 +65,6 @@ type View = "overview" | "accounts" | "wishlist" | "history" | "copilot" | "sett
 type Modal =
   | "payday"
   | "borrow"
-  | "help"
   | "copilot"
   | "account"
   | "reset"
@@ -348,6 +348,12 @@ export default function App() {
   const chatEnd = useRef<HTMLDivElement>(null);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [conversation, busy, view]);
   function openSettings(tab = hasUpdate ? "updates" : "accounts") { setSettingsTab(tab); setModal(null); setView("settings"); }
+  const [tourIndex,setTourIndex]=useState<number|null>(null);
+  const tourOrigin=useRef({view:"overview" as View,tab:"accounts"});
+  const tourReturnFocus=useRef<HTMLElement|null>(null);
+  function goTour(index:number){const step=tourSteps[index];setModal(null);setView(step.view);if(step.tab)setSettingsTab(step.tab);setTourIndex(index);}
+  function startTour(){tourOrigin.current={view,tab:settingsTab};tourReturnFocus.current=document.activeElement as HTMLElement;goTour(0);void storage.markTourSeen().catch(()=>notify("The tour preference could not be saved. It may appear again next time.",true));}
+  function finishTour(){setTourIndex(null);setView(tourOrigin.current.view);setSettingsTab(tourOrigin.current.tab);requestAnimationFrame(()=>{const previous=tourReturnFocus.current;if(previous?.isConnected&&previous!==document.body)previous.focus();else document.querySelector<HTMLButtonElement>(".balance-actions .primary, .sidebar-help")?.focus();});}
   const saveQueue = useRef(Promise.resolve());
   const latestDraft = useRef(draft);
   latestDraft.current = draft;
@@ -356,10 +362,11 @@ export default function App() {
   useEffect(() => {
     storage
       .load()
-      .then(({ vault, hasKey }) => {
+      .then(({ vault, hasKey, showTour }) => {
         if (vault) setVault(stateSchema.parse(vault));
         setHasKey(hasKey);
         setReady(true);
+        if(showTour)startTour();
       })
       .catch((e) => setLoadError(e.message));
   }, []);
@@ -566,7 +573,7 @@ export default function App() {
           </span>
           <span>
             Hello, welcome back <span className="greeting-period">.</span>
-            <small>Let's make this payday count.</small>
+
           </span>
         </div>
         <a
@@ -603,17 +610,11 @@ export default function App() {
           <button
             className="icon-button"
             aria-label="Help"
-            onClick={() => setModal("help")}
+            onClick={() => startTour()}
           >
             <CircleHelp size={19} />
           </button>
-          <button
-            className="avatar"
-            aria-label="Open settings"
-            onClick={() => openSettings()}
-          >
-            P
-          </button>
+
         </div>
       </header>
       <main className={view === "copilot" ? "chat-main" : view === "overview" ? "overview-layout" : undefined}>
@@ -984,7 +985,7 @@ export default function App() {
           <div className="settings-page">
             <header className="settings-page-heading">
               <div><span className="settings-eyebrow">MAKE IT YOURS</span><h1>Settings</h1><p>Your accounts, your assistant, and your data.</p></div>
-              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.5.3"}</span>
+              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.6.0"}</span>
             </header>
             <nav className="settings-links" aria-label="Settings sections" role="tablist">
               {[{id:"accounts",name:"Accounts",Icon:Wallet},{id:"currency",name:"Currency",Icon:Banknote},{id:"gemini",name:"AI co-pilot",Icon:Sparkles},{id:"backup",name:"Backups & storage",Icon:ShieldCheck},{id:"updates",name:"Updates",Icon:Download},{id:"reset",name:"Reset & uninstall",Icon:RefreshCw}].map(({id,name,Icon},index)=><button key={id} type="button" id={`settings-tab-${id}`} role="tab" aria-selected={settingsTab===id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab===id?0:-1} onClick={()=>setSettingsTab(id)} onKeyDown={event=>{const tabs=["accounts","currency","gemini","backup","updates","reset"];let next=index;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;else return;event.preventDefault();setSettingsTab(tabs[next]);document.getElementById(`settings-tab-${tabs[next]}`)?.focus();}}><Icon size={16}/>{name}{id === "updates" && hasUpdate && <i className="settings-update-dot" aria-hidden="true"/>}</button>)}
@@ -1261,7 +1262,7 @@ export default function App() {
           <span>Payday co-pilot</span>
         </button>
         <div className="dock-separator" />
-        <button className="sidebar-help" onClick={() => setModal("help")}>
+        <button className="sidebar-help" onClick={() => startTour()}>
           <CircleHelp size={19} />
           <span>Help & getting started</span>
         </button>
@@ -1270,13 +1271,7 @@ export default function App() {
           <span>Settings</span>
           {hasUpdate && <><small id="settings-update-note" className="settings-update-badge">{updateReady ? "Ready" : "Update"}</small><i className="settings-update-dot nav-update-dot" aria-hidden="true"/></>}
         </button>
-        <button
-          className="dock-payday"
-          onClick={committed ? nextMonth : openPayday}
-        >
-          <Plus size={19} />
-          <span>{committed ? "Next payday" : "Plan payday"}</span>
-        </button>
+
       </nav>
       {toast && (
         <div
@@ -1292,41 +1287,6 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-      )}
-      {modal === "help" && (
-        <ModalFrame
-          title="A calmer kind of budgeting."
-          subtitle="Two moments. That’s all you need."
-          onClose={() => setModal(null)}
-        >
-          <div className="help-step">
-            <div>01</div>
-            <section>
-              <h3>On payday, give every cedi a home.</h3>
-              <p>
-                Enter your salary, lock in commute and data, then split savings,
-                feeding and a little living. Save payday after reviewing your
-                plan, then make the real transfers yourself.
-              </p>
-            </section>
-          </div>
-          <div className="help-step">
-            <div>02</div>
-            <section>
-              <h3>Come back when life happens.</h3>
-              <p>
-                Record emergency borrowing from GCB or mark a funded wishlist
-                item as bought. Your next savings deposit pays your internal
-                debt first. No daily expense logging.
-              </p>
-            </section>
-          </div>
-          <p className="settings-note">
-            Fresh paydays start at zero. Existing savings and history are
-            retained. The savings vault grows when you save a payday. Wishlist
-            contributions roll forward; bought items stay archived.
-          </p>
-        </ModalFrame>
       )}
       {modal === "account" && (
         <ModalFrame
@@ -1902,6 +1862,7 @@ export default function App() {
           </div>
         </ModalFrame>
       )}
+      {tourIndex!==null && <GuidedTour index={tourIndex} onClose={finishTour} onBack={()=>goTour(tourIndex-1)} onNext={()=>tourIndex===tourSteps.length-1?finishTour():goTour(tourIndex+1)}/>}
     </CurrencyProvider>
   );
 }

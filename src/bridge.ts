@@ -3,6 +3,7 @@ export type UpdateState = {status: "idle"|"unavailable"|"checking"|"available"|"
 declare global {
   interface Window {
     payday?: {
+      markTourSeen: () => Promise<void>;
       exchangeRates: () => Promise<ExchangeRates>;
       updateStatus: () => Promise<UpdateState>;
       checkUpdates: () => Promise<UpdateState>;
@@ -11,7 +12,7 @@ declare global {
       onUpdate: (callback: (state:UpdateState)=>void) => () => void;
       reset: () => Promise<Vault>;
       uninstall: () => Promise<boolean>;
-      load: () => Promise<{ vault: Vault | null; hasKey: boolean }>;
+      load: () => Promise<{ vault: Vault | null; hasKey: boolean; showTour: boolean }>;
       save: (v: Vault) => Promise<void>;
       checkKey: () => Promise<{ model: string }>;
       setKey: (key: string) => Promise<void>;
@@ -22,7 +23,9 @@ declare global {
   }
 }
 let previewVault: Vault | null = null;
+let previewTourSeen=false;
 export const storage = {
+  async markTourSeen() {if(window.payday) return window.payday.markTourSeen();previewTourSeen=true;},
   async reset() {
     if (window.payday) return window.payday.reset();
     previewVault = initialVault();
@@ -37,7 +40,7 @@ export const storage = {
   },
   async load() {
     if (window.payday) return window.payday.load();
-    return { vault: previewVault, hasKey: false };
+    return { vault: previewVault, hasKey: false, showTour: !previewVault && !previewTourSeen };
   },
   async save(v: Vault) {
     stateSchema.parse(v);

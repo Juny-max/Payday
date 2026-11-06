@@ -11,10 +11,10 @@ try {
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page
-    .getByRole("button", { name: "Plan payday", exact: true })
+    .getByRole("button", { name: "Start payday allocation", exact: true })
     .waitFor();
   assert.equal((await page.evaluate(() => window.payday.load())).vault, null);
-  await page.getByRole("button", { name: "Plan payday", exact: true }).click();
+  await page.getByRole("button", { name: "Start payday allocation", exact: true }).click();
   const salary = page.getByRole("spinbutton", { name: "Take-home salary" }),
     daily = page.getByRole("spinbutton", { name: "Daily in & out fare" }),
     saving = () => page.getByRole("spinbutton", { name: /^Savings/ });
@@ -94,7 +94,7 @@ try {
   assert.equal(v.plan.dataReserve, 200);
   assert.equal(v.plan.dataMonthsRemaining, 1);
   assert.equal(v.history.length, 1);
-  await page.getByRole("button", { name: "Next payday", exact: true }).click();
+  await page.getByRole("button", { name: "Start payday allocation", exact: true }).click();
   assert.equal(await salary.inputValue(), "0");
   assert.equal(await daily.inputValue(), "0");
   assert.equal(
@@ -112,7 +112,7 @@ try {
   v = (await page.evaluate(() => window.payday.load())).vault;
   assert.equal(v.history.length, 2);
   assert.equal(v.plan.dataMonthsRemaining, 0);
-  await page.getByRole("button", { name: "Next payday", exact: true }).click();
+  await page.getByRole("button", { name: "Start payday allocation", exact: true }).click();
   assert.equal(await salary.inputValue(), "0");
   assert.equal(
     await page

@@ -11,7 +11,7 @@ const app = await electron.launch({
 try {
   const page = await app.firstWindow();
   await page
-    .getByRole("button", { name: "Plan payday", exact: true })
+    .getByRole("button", { name: "Start payday allocation", exact: true })
     .waitFor();
   const dir = await app.evaluate(({ app }) => app.getPath("userData"));
   // A real legacy JSON vault, including funds/history, must migrate without losing them.
