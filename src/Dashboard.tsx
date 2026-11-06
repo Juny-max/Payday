@@ -1,3 +1,4 @@
+import {useCurrency} from "./Currency";
 import { useState } from "react";
 import {
   Bank,
@@ -16,7 +17,6 @@ import {
 } from "@phosphor-icons/react";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 import {
-  cash,
   totals,
   remaining,
   monthlyWorkdays,
@@ -66,6 +66,7 @@ export function AllocationCard({
   onEdit: () => void;
   names?: AccountNames;
 }) {
+  const {cash}=useCurrency();
   const [hovered, setHovered] = useState<string | null>(null);
   const t = totals(plan),
     left = remaining(plan);
@@ -199,6 +200,7 @@ export function AccountBreakdown({
   onAccount: (key: AccountKey) => void;
   names?: AccountNames;
 }) {
+  const {cash}=useCurrency();
   const t = totals(plan);
   return (
     <section className="breakdown-card panel">
@@ -272,6 +274,7 @@ export default function Dashboard({
   onAccount: (key: AccountKey) => void;
   showAccounts: boolean;
 }) {
+  const {cash,symbol,label,number}=useCurrency();
   const p = vault.plan,
     t = totals(p),
     left = remaining(p);
@@ -286,7 +289,7 @@ export default function Dashboard({
           <div className="balance-top">
             <span className="currency-label">
               <Wallet size={15} />
-              GH₵ <span>Ghana Cedi</span>
+              {symbol} <span>{label}</span>
             </span>
             <span className={`plan-status ${committed ? "saved" : ""}`}>
               <i />
@@ -295,8 +298,8 @@ export default function Dashboard({
           </div>
           <p className="balance-caption">Your monthly payday</p>
           <h2 className="balance-value">
-            <span>GH₵</span>
-            {p.salary.toLocaleString("en-GH", { minimumFractionDigits: 2 })}
+            <span>{symbol}</span>
+            {number(p.salary).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </h2>
           <div className="balance-context">
             <CalendarBlank size={14} />

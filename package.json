@@ -1,6 +1,6 @@
 {
   "name": "payday-desktop",
-  "version": "1.4.7",
+  "version": "1.5.0",
   "private": true,
   "description": "A calmer payday. Offline-first budgeting for Ghana.",
   "author": "Payday",
@@ -94,5 +94,6 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Juny-max/Payday.git"
-  }
+  },
+  "license": "MIT"
 }

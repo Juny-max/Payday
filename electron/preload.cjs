@@ -1,5 +1,6 @@
 const { contextBridge, ipcRenderer } = require("electron");
 contextBridge.exposeInMainWorld("payday", {
+  exchangeRates: () => ipcRenderer.invoke("currency:rates"),
   updateStatus: () => ipcRenderer.invoke("updates:get"),
   checkUpdates: () => ipcRenderer.invoke("updates:check"),
   downloadUpdate: () => ipcRenderer.invoke("updates:download"),

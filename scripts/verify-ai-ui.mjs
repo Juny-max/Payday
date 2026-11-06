@@ -5,7 +5,7 @@ const {initialVault,balancePlan,commitPayday}=createRequire(import.meta.url)('..
 const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;
 const app=await electron.launch({args:['scripts/ai-ui-harness.cjs'],env});
 try{
- const page=await app.firstWindow();await page.getByRole('button',{name:'Settings',exact:true}).click();
+ const page=await app.firstWindow();await page.getByRole('button',{name:'Settings',exact:true}).click();await page.getByRole('tab',{name:'AI co-pilot',exact:true}).click();
  await page.getByPlaceholder('Paste your GEMINI_API_KEY').fill('test-ui-key');await page.getByRole('button',{name:'Save key',exact:true}).click();await page.getByText('Key saved',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Test connection',exact:true}).click();await page.getByText('Verified',{exact:true}).waitFor();
  await page.getByRole('button',{name:'Payday co-pilot',exact:true}).click();await page.getByRole('textbox',{name:'Tell your payday co-pilot about your month'}).fill('Synthetic UI test only.');await page.getByRole('button',{name:'Send message'}).click();

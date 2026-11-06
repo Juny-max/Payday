@@ -1,8 +1,9 @@
-import { initialVault, stateSchema, type Vault, type Plan } from "./model";
+import { initialVault, stateSchema, type Vault, type Plan, type ExchangeRates } from "./model";
 export type UpdateState = {status: "idle"|"unavailable"|"checking"|"available"|"current"|"downloading"|"ready"|"installing"|"error"; currentVersion:string; version:string; percent:number; message:string};
 declare global {
   interface Window {
     payday?: {
+      exchangeRates: () => Promise<ExchangeRates>;
       updateStatus: () => Promise<UpdateState>;
       checkUpdates: () => Promise<UpdateState>;
       downloadUpdate: () => Promise<UpdateState>;

@@ -64,6 +64,7 @@ if (!app.requestSingleInstanceLock()) {
       notify: state => { if(win && !win.isDestroyed()) win.webContents.send("updates:status", state); },
       beforeInstall: async () => { await writeQueue; },
     });
+    ipcMain.handle("currency:rates", async e => { trusted(e); try { return await require("./exchange.cjs").fetchRates(); } catch { throw new Error("Could not refresh exchange rates. Keep your saved rates or enter rates manually."); } });
     ipcMain.handle("updates:get", e => {trusted(e); return updates.get();});
     ipcMain.handle("updates:check", e => {trusted(e); return updates.check();});
     ipcMain.handle("updates:download", e => {trusted(e); return updates.download();});
@@ -192,7 +193,7 @@ if (!app.requestSingleInstanceLock()) {
       trusted(e);
       const saved = await enqueue(() => vaultStorage.read());
       return require("./gemini.cjs").generatePlan({
-        appContext: saved ? { savingsBalance: saved.savingsBalance, selfDebt: saved.debt, savedPaydayMonth: saved.plan.month, savedSalary: saved.plan.salary, currentMonth: new Date().toLocaleDateString("en-CA", {timeZone:"Africa/Accra",year:"numeric",month:"2-digit"}) } : null,
+        appContext: saved ? { savingsBalance: saved.savingsBalance, selfDebt: saved.debt, savedPaydayMonth: saved.plan.month, savedSalary: saved.plan.salary, displayCurrency: saved.displayCurrency ?? "GHS", exchangeRates: saved.exchangeRates ?? null, currentMonth: new Date().toLocaleDateString("en-CA", {timeZone:"Africa/Accra",year:"numeric",month:"2-digit"}) } : null,
         conversation: true,
         apiKey: await savedGeminiKey(),
         prompt,

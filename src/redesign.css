@@ -3600,3 +3600,18 @@ main.chat-main { padding-top: 24px; padding-bottom: 24px; }
 @media (prefers-reduced-motion: reduce) { .budget-orbit i, .budget-preview span { animation: none; } }
 
 .update-progress {display:flex;gap:12px;align-items:center;color:#50723e;font-size:12px;} .update-progress progress {flex:1;accent-color:#739e4a;height:9px;}
+
+.settings-links button { display:flex;gap:8px;align-items:center;color:#536750;background:transparent;border:0;font-size:12px;font-weight:650;border-radius:12px;padding:10px 16px; }
+.settings-links button[aria-selected="true"] { background:#fff;color:#214b33;box-shadow:0 2px 8px #24442008; }
+.settings-links button:hover { background:#ffffff9c; }
+.settings-grid.settings-panels { display:block;max-width:960px; }
+.settings-panels > div > .setting-section { margin:0;padding:28px;border:1px solid #e4e9e1;border-radius:24px;background:#fff; }
+.settings-panels [hidden] { display:none !important; }
+.settings-panels select { width:100%;border:1px solid #dfe6d9;background:#fafbf9;border-radius:12px;min-height:48px;padding:12px 15px;color:#294832;font:inherit;font-size:14px; }
+.rate-summary { background:#f2f7ec;border:1px solid #e0e9d7;border-radius:16px;padding:18px;font-size:13px;color:#49683b;margin:18px 0; }
+.rate-summary p { margin:9px 0 0;font-size:12px;line-height:1.8;color:#75836c; }
+.currency-warning { padding:14px;background:#fff5df;border:1px solid #efdfba;border-radius:12px;color:#96691c;font-size:12px; }
+.currency-view-notice { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:#edf5e6;border:1px solid #dce8d0;border-radius:14px;font-size:12px;color:#57724a;margin-bottom:20px; }
+.currency-view-notice button { font:inherit;color:#2b5132;white-space:nowrap;text-decoration:underline; }
+.manual-rates { border-top:1px solid #e6ecdf;padding-top:22px;margin-top:22px; }
+@media(max-width:700px) { .settings-links button{padding:10px;} .currency-view-notice{flex-direction:column;align-items:flex-start;} }

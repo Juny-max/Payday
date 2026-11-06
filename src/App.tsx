@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, useMemo, type ReactNode } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
@@ -29,6 +29,7 @@ import {
   Archive,
   CalendarBlank,
 } from "@phosphor-icons/react";
+import {CurrencyProvider,CurrencySettings,currencyPresentation,useCurrency} from "./Currency";
 import { storage, type UpdateState } from "./bridge";
 import { accountReport, type AccountKey } from "./account-report";
 import Dashboard, { AllocationCard, AccountBreakdown } from "./Dashboard";
@@ -49,7 +50,6 @@ import {
   transportDeficit,
   borrow,
   buyWish,
-  cash,
   commitPayday,
   initialVault,
   money,
@@ -215,7 +215,7 @@ function AccountSettings({
   const [edited, setEdited] = useState(names);
   useEffect(() => setEdited(names), [names]);
   return (
-    <section className="setting-section account-preferences" id="settings-accounts">
+    <section className="setting-section account-preferences" role="tabpanel" id="settings-panel-accounts" aria-labelledby="settings-tab-accounts">
       <div className="settings-card-icon"><Wallet size={23}/></div>
       <h2>Account names</h2>
       <p className="settings-note">
@@ -258,6 +258,7 @@ function AccountReportDetails({
   vault: Vault;
   account: AccountKey;
 }) {
+  const {cash}=useCurrency();
   const r = accountReport(vault, account);
   return (
     <div className="account-report">
@@ -306,6 +307,9 @@ export default function App() {
     [newName, setNewName] = useState(""),
     [newCost, setNewCost] = useState(0),
     [showArchive, setShowArchive] = useState(false);
+  const [settingsTab,setSettingsTab]=useState("accounts");
+  const display=useMemo(()=>currencyPresentation(vault.displayCurrency ?? "GHS",vault.exchangeRates),[vault.displayCurrency,vault.exchangeRates]);
+  const cash=display.cash;
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
   useEffect(() => {
     if(!window.payday) return;
@@ -341,7 +345,7 @@ export default function App() {
   const [proposedPlan, setProposedPlan] = useState<Plan | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [conversation, busy, view]);
-  function openSettings() { setModal(null); setView("settings"); }
+  function openSettings(tab = "accounts") { setSettingsTab(tab); setModal(null); setView("settings"); }
   const saveQueue = useRef(Promise.resolve());
   const latestDraft = useRef(draft);
   latestDraft.current = draft;
@@ -549,7 +553,7 @@ export default function App() {
       </div>
     );
   return (
-    <>
+    <CurrencyProvider currency={vault.displayCurrency ?? "GHS"} rates={vault.exchangeRates}>
       <div className="ambient one" />
       <div className="ambient two" />
       <div className="ambient three" />
@@ -611,6 +615,7 @@ export default function App() {
         </div>
       </header>
       <main className={view === "copilot" ? "chat-main" : view === "overview" ? "overview-layout" : undefined}>
+        {display.currency !== "GHS" && <div className="currency-view-notice"><span>{display.currency} estimates using {vault.exchangeRates?.source} rates dated {vault.exchangeRates?.asOf}. Inputs and original notes remain in GHS.</span><button onClick={()=>openSettings("currency")}>Currency settings</button></div>}
         {view !== "copilot" && view !== "settings" && <section
           className={`page-heading ${view === "overview" ? "overview-heading" : ""}`}
         >
@@ -977,16 +982,13 @@ export default function App() {
           <div className="settings-page">
             <header className="settings-page-heading">
               <div><span className="settings-eyebrow">MAKE IT YOURS</span><h1>Settings</h1><p>Your accounts, your assistant, and your data.</p></div>
-              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.4.7"}</span>
+              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.5.0"}</span>
             </header>
-            <nav className="settings-links" aria-label="Settings sections">
-              <a href="#settings-accounts"><Wallet size={16}/>Accounts</a>
-              <a href="#settings-gemini"><Sparkles size={16}/>AI co-pilot</a>
-              <a href="#settings-backup"><ShieldCheck size={16}/>Backups & storage</a>
-              <a href="#settings-updates"><Download size={16}/>Updates</a>
-              <a href="#settings-reset"><RefreshCw size={16}/>Reset & uninstall</a>
+            <nav className="settings-links" aria-label="Settings sections" role="tablist">
+              {[{id:"accounts",name:"Accounts",Icon:Wallet},{id:"currency",name:"Currency",Icon:Banknote},{id:"gemini",name:"AI co-pilot",Icon:Sparkles},{id:"backup",name:"Backups & storage",Icon:ShieldCheck},{id:"updates",name:"Updates",Icon:Download},{id:"reset",name:"Reset & uninstall",Icon:RefreshCw}].map(({id,name,Icon},index)=><button key={id} type="button" id={`settings-tab-${id}`} role="tab" aria-selected={settingsTab===id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab===id?0:-1} onClick={()=>setSettingsTab(id)} onKeyDown={event=>{const tabs=["accounts","currency","gemini","backup","updates","reset"];let next=index;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;else return;event.preventDefault();setSettingsTab(tabs[next]);document.getElementById(`settings-tab-${tabs[next]}`)?.focus();}}><Icon size={16}/>{name}</button>)}
             </nav>
-            <div className="settings-grid">
+            <div className="settings-grid settings-panels">
+          <div hidden={settingsTab!=="accounts"}>
           <AccountSettings
             names={accountNames}
             disabled={saving}
@@ -1000,7 +1002,9 @@ export default function App() {
                 notify("Account names updated.");
             }}
           />
-          <section className="setting-section" id="settings-gemini">
+          </div>
+          {settingsTab==="currency" && <CurrencySettings key={`${vault.displayCurrency}-${vault.exchangeRates?.fetchedAt}`} currency={vault.displayCurrency ?? "GHS"} rates={vault.exchangeRates} disabled={saving||busy} onSave={async(currency,rates)=>{const saved=await persist({...vault,displayCurrency:currency,exchangeRates:rates});if(saved)notify("Currency preferences saved.");return saved;}}/>}
+          <section hidden={settingsTab!=="gemini"} role="tabpanel" aria-labelledby="settings-tab-gemini" className="setting-section" id="settings-panel-gemini">
             <div className="setting-title">
               <Sparkles size={21} />
               <div>
@@ -1110,7 +1114,7 @@ export default function App() {
               <p className="danger-text settings-note">{keyTestError}</p>
             )}
           </section>
-          <section className="setting-section" id="settings-backup">
+          <section hidden={settingsTab!=="backup"} role="tabpanel" aria-labelledby="settings-tab-backup" className="setting-section" id="settings-panel-backup">
             <div className="setting-title">
               <ShieldCheck size={21} />
               <div>
@@ -1171,7 +1175,7 @@ export default function App() {
               are never included. Keep Windows account recovery available.
             </p>
           </section>
-          <section className="setting-section settings-updates" id="settings-updates">
+          <section hidden={settingsTab!=="updates"} role="tabpanel" aria-labelledby="settings-tab-updates" className="setting-section settings-updates" id="settings-panel-updates">
             <div className="setting-title"><Download size={21}/><div><h2>App updates</h2><p>New versions from Juny-max / Payday on GitHub.</p></div></div>
             <p className="settings-note" role="status">{updateState?.message ?? "Open the installed Windows app to check for updates."}</p>
             {updateState?.status === "downloading" && <div className="update-progress"><progress aria-label="Update download progress" max="100" value={updateState.percent}/><span>{Math.round(updateState.percent)}%</span></div>}
@@ -1182,7 +1186,7 @@ export default function App() {
             </div>
             <p className="settings-note">Nothing downloads until you choose. Updating keeps your saved budgets and API key. Finish any unsaved edits before restarting.</p>
           </section>
-          <section className="setting-section settings-danger" id="settings-reset">
+          <section hidden={settingsTab!=="reset"} role="tabpanel" aria-labelledby="settings-tab-reset" className="setting-section settings-danger" id="settings-panel-reset">
             <div className="settings-card-icon"><RefreshCw size={23}/></div>
             <h2>Reset or uninstall</h2>
             <p className="settings-note">
@@ -1259,7 +1263,7 @@ export default function App() {
           <CircleHelp size={19} />
           <span>Help & getting started</span>
         </button>
-        <button aria-label="Settings" aria-current={view === "settings" ? "page" : undefined} className={view === "settings" ? "selected" : ""} onClick={openSettings}>
+        <button aria-label="Settings" aria-current={view === "settings" ? "page" : undefined} className={view === "settings" ? "selected" : ""} onClick={() => openSettings()}>
           <Settings size={20} />
           <span>Settings</span>
         </button>
@@ -1334,7 +1338,7 @@ export default function App() {
         <ModalFrame
           title="Reset all Payday data?"
           subtitle="This clears all local financial records and starts from zero."
-          onClose={() => openSettings()}
+          onClose={() => {setModal(null);setView("settings");setSettingsTab("reset");}}
         >
           <div className="reset-warning">
             <strong>This will clear:</strong>
@@ -1366,7 +1370,7 @@ export default function App() {
             <button
               className="secondary"
               disabled={saving}
-              onClick={() => openSettings()}
+              onClick={() => {setModal(null);setSettingsTab("reset");}}
             >
               Cancel
             </button>
@@ -1895,6 +1899,6 @@ export default function App() {
           </div>
         </ModalFrame>
       )}
-    </>
+    </CurrencyProvider>
   );
 }

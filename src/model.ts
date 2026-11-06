@@ -49,7 +49,25 @@ export const defaultAccountNames = {
   first: "FirstBank",
 };
 export type AccountNames = z.infer<typeof accountNamesSchema>;
+export const currencySchema = z.enum(["GHS", "USD", "GBP"]);
+export type Currency = z.infer<typeof currencySchema>;
+export const exchangeRatesSchema = z.object({
+  USD: z.number().finite().positive().max(1000000),
+  GBP: z.number().finite().positive().max(1000000),
+  asOf: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(value => { const parsed=new Date(value+"T00:00:00Z"); return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0,10)===value; }, "Enter a valid rate date."),
+  fetchedAt: z.string().datetime(),
+  source: z.enum(["Frankfurter", "Manual"]),
+});
+export type ExchangeRates = z.infer<typeof exchangeRatesSchema>;
+export function displayAmount(n: number, currency: Currency, rates?: ExchangeRates) {
+  if(currency === "GHS") return n;
+  if(!rates) throw new Error("Save an exchange rate before selecting USD or GBP.");
+  exchangeRatesSchema.parse(rates);
+  return money(n * rates[currency]);
+}
 export const stateSchema = z.object({
+  displayCurrency: currencySchema.optional(),
+  exchangeRates: exchangeRatesSchema.optional(),
   accountNames: accountNamesSchema.optional(),
   version: z.literal(1),
   plan: planSchema,

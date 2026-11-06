@@ -1,5 +1,5 @@
 function createUpdateService({app, updater, notify, beforeInstall = async () => {}}) {
-  let state = { status: app.isPackaged ? "idle" : "unavailable", currentVersion: app.getVersion(), version: "", percent: 0, message: app.isPackaged ? "Check for a new version when you are ready." : "Updates are available in the installed Windows app." };
+  let state = { status: app.isPackaged ? "idle" : "unavailable", currentVersion: app.isPackaged ? app.getVersion() : require("../package.json").version, version: "", percent: 0, message: app.isPackaged ? "Check for a new version when you are ready." : "Updates are available in the installed Windows app." };
   let checking = false, downloading = false;
   updater.autoDownload = false;
   updater.autoInstallOnAppQuit = false;
