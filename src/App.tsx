@@ -985,7 +985,7 @@ export default function App() {
           <div className="settings-page">
             <header className="settings-page-heading">
               <div><span className="settings-eyebrow">MAKE IT YOURS</span><h1>Settings</h1><p>Your accounts, your assistant, and your data.</p></div>
-              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.6.0"}</span>
+              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.6.1"}</span>
             </header>
             <nav className="settings-links" aria-label="Settings sections" role="tablist">
               {[{id:"accounts",name:"Accounts",Icon:Wallet},{id:"currency",name:"Currency",Icon:Banknote},{id:"gemini",name:"AI co-pilot",Icon:Sparkles},{id:"backup",name:"Backups & storage",Icon:ShieldCheck},{id:"updates",name:"Updates",Icon:Download},{id:"reset",name:"Reset & uninstall",Icon:RefreshCw}].map(({id,name,Icon},index)=><button key={id} type="button" id={`settings-tab-${id}`} role="tab" aria-selected={settingsTab===id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab===id?0:-1} onClick={()=>setSettingsTab(id)} onKeyDown={event=>{const tabs=["accounts","currency","gemini","backup","updates","reset"];let next=index;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;else return;event.preventDefault();setSettingsTab(tabs[next]);document.getElementById(`settings-tab-${tabs[next]}`)?.focus();}}><Icon size={16}/>{name}{id === "updates" && hasUpdate && <i className="settings-update-dot" aria-hidden="true"/>}</button>)}

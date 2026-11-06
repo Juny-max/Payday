@@ -25,3 +25,5 @@ test("background failures stay quiet and an offered update is not cleared",async
  assert.equal((await service.check()).status,"error");
  assert.equal(service.get().version,"1.5.4");
 });
+
+test("update requests revalidate cached release metadata and retain existing headers",()=>{const updater=Object.assign(new EventEmitter(),{requestHeaders:{"X-Product":"Payday"}});createUpdateService({app:{isPackaged:true,getVersion:()=>"1.6.1"},updater,notify:()=>{}});assert.deepEqual(updater.requestHeaders,{"X-Product":"Payday","Cache-Control":"no-cache","Pragma":"no-cache"});});

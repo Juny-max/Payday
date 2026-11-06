@@ -1,6 +1,8 @@
 function createUpdateService({app, updater, notify, beforeInstall = async () => {}}) {
   let state = { status: app.isPackaged ? "idle" : "unavailable", currentVersion: app.isPackaged ? app.getVersion() : require("../package.json").version, version: "", percent: 0, message: app.isPackaged ? "Check for a new version when you are ready." : "Updates are available in the installed Windows app." };
   let checking = false, downloading = false, quietCheck = false, beforeCheck = null;
+  // Revalidate GitHub metadata: cached /releases/latest replies can hide a new build.
+  updater.requestHeaders = {...updater.requestHeaders,"Cache-Control":"no-cache","Pragma":"no-cache"};
   updater.autoDownload = false;
   updater.autoInstallOnAppQuit = false;
   updater.allowDowngrade = false;
