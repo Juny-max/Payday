@@ -33,7 +33,7 @@ if (code !== 0)
   );
 await mkdir(release, { recursive: true });
 for (const suffix of [".exe", ".exe.blockmap"]) {
-  const name = `Payday Setup ${version}${suffix}`;
+  const name = `Payday-Setup-${version}${suffix}`;
   await copyFile(path.join(stage, name), path.join(release, name));
 }
 await copyFile(path.join(stage, "latest.yml"), path.join(release, "latest.yml"));

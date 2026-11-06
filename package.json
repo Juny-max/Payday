@@ -85,7 +85,8 @@
         "repo": "Payday",
         "releaseType": "release"
       }
-    ]
+    ],
+    "artifactName": "Payday-Setup-${version}.${ext}"
   },
   "overrides": {
     "minimatch@>=7.0.0 <11.0.1": "^11.0.1"

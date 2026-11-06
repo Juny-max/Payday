@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: payday-windows-release
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   release:
     runs-on: windows-latest
@@ -32,5 +32,5 @@ jobs:
           $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
           gh release view "v$version" --repo "$env:GITHUB_REPOSITORY" *> $null
           if ($LASTEXITCODE -eq 0) { Write-Output "Version already published; bump package.json for a new release."; exit 0 }
-          gh release create "v$version" "release/Payday Setup $version.exe" "release/Payday Setup $version.exe.blockmap" "release/latest.yml" --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "Payday $version" --notes "Windows payday planner. Download the installer for first setup; existing supported installs can update from Settings."
+          gh release create "v$version" "release/Payday-Setup-$version.exe" "release/Payday-Setup-$version.exe.blockmap" "release/latest.yml" --repo "$env:GITHUB_REPOSITORY" --target "$env:GITHUB_SHA" --title "Payday $version" --notes "Windows payday planner. Download the installer for first setup; existing supported installs can update from Settings."
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
