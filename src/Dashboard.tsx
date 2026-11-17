@@ -21,6 +21,7 @@ import {
   remaining,
   monthlyWorkdays,
   defaultAccountNames,
+  defaultAccountEnabled,
   type AccountNames,
   type Vault,
   type Plan,
@@ -191,11 +192,13 @@ export function AllocationCard({
 
 export function AccountBreakdown({
   plan,
+  enabled = defaultAccountEnabled,
   onAccounts,
   onAccount,
   names = defaultAccountNames,
 }: {
   plan: Plan;
+  enabled?: Record<AccountKey, boolean>;
   onAccounts: () => void;
   onAccount: (key: AccountKey) => void;
   names?: AccountNames;
@@ -219,7 +222,7 @@ export function AccountBreakdown({
       </div>
       <p className="breakdown-subtitle">Your money, with a purpose.</p>
       <div className="breakdown-rows">
-        {accounts.map((a) => (
+        {accounts.filter((a) => enabled[a.key]).map((a) => (
           <button
             type="button"
             key={a.key}

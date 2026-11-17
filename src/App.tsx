@@ -698,6 +698,7 @@ export default function App() {
             <AllocationCard names={accountNames} plan={p} onEdit={openPayday} />
             <AccountBreakdown
               names={accountNames}
+              enabled={accountEnabled}
               plan={p}
               onAccounts={() => setView("accounts")}
               onAccount={openAccount}
