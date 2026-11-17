@@ -309,6 +309,7 @@ export default function App() {
     [newCost, setNewCost] = useState(0),
     [showArchive, setShowArchive] = useState(false);
   const [settingsTab,setSettingsTab]=useState("accounts");
+  const [expandedHistory,setExpandedHistory]=useState<Record<string,boolean>>({});
   const display=useMemo(()=>currencyPresentation(vault.displayCurrency ?? "GHS",vault.exchangeRates),[vault.displayCurrency,vault.exchangeRates]);
   const cash=display.cash;
   const [updateState, setUpdateState] = useState<UpdateState | null>(null);
@@ -905,24 +906,25 @@ export default function App() {
                 <h2>Payday history</h2>
                 <span className="soft-tag">{vault.history.length} paydays</span>
               </div>
-              {vault.history.map((h) => (
-                <div
-                  className="history-row"
-                  key={h.planId ?? `${h.month}-${h.date}`}
-                >
-                  <div className="history-icon">
-                    <ArrowDownLeft size={21} />
-                  </div>
-                  <div>
-                    <strong>{dateLabel(h.month)}</strong>
-                    <p>
-                      {cash(h.savings)} saved
-                      {h.repaid > 0 ? ` · ${cash(h.repaid)} debt repaid` : ""}
-                    </p>
-                  </div>
-                  <strong>{cash(h.salary)}</strong>
-                </div>
-              ))}
+              {vault.history.map((h) => {
+                const key=h.planId ?? `${h.month}-${h.date}`;
+                return <article className="history-record" key={key}>
+                  <button type="button" className="history-row history-trigger" aria-expanded={Boolean(expandedHistory[key])} onClick={()=>setExpandedHistory(current=>({...current,[key]:!current[key]}))}>
+                    <span className="history-icon"><ArrowDownLeft size={21}/></span>
+                    <span className="history-primary"><strong>{dateLabel(h.month)}</strong><small>{cash(h.savings)} saved{h.repaid>0?` · ${cash(h.repaid)} debt repaid`:""}</small></span>
+                    <strong className="history-salary">{cash(h.salary)}</strong>
+                    <ChevronDown className="history-chevron" size={17}/>
+                  </button>
+                  {expandedHistory[key] && (h.accountSplit ? <div className="history-breakdown">
+                    <div><span>Take-home salary</span><strong>{cash(h.salary)}</strong></div>
+                    <div><span>{accountNames.gcb}</span><strong>{cash(h.savings)}</strong></div>
+                    <div><span>{accountNames.telecel}</span><strong>{cash(h.accountSplit.telecel)}</strong></div>
+                    <div><span>{accountNames.momo}</span><strong>{cash(h.accountSplit.momo)}</strong></div>
+                    <div><span>{accountNames.first}</span><strong>{cash(h.accountSplit.first)}</strong></div>
+                    {h.repaid>0&&<div><span>GCB self-debt repaid</span><strong>{cash(h.repaid)}</strong></div>}
+                  </div> : <p className="history-legacy-note">This payday was saved before account breakdowns were recorded, so its pocket amounts aren’t available.</p>)}
+                </article>;
+              })}
               {!vault.history.length && (
                 <div className="empty-state">
                   <History size={30} />

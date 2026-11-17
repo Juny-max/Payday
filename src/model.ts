@@ -84,6 +84,7 @@ export const stateSchema = z.object({
       month: z.string(),
       salary: amount,
       savings: amount,
+      accountSplit: z.object({telecel:amount,momo:amount,first:amount}).optional(),
       repaid: amount,
       date: z.string(),
     }),
@@ -140,6 +141,10 @@ export const totals = (p: Plan) => ({
     p.wardrobe + p.partner + p.wishes.reduce((s, w) => s + w.contribution, 0),
   ),
 });
+export function firstBankAllocatedToDate(v: Vault): number {
+  const legacyCurrent = isPlanCommitted(v) ? totals(v.plan).first : 0;
+  return money(v.history.reduce((sum,h)=>sum+(h.accountSplit?.first ?? (h.planId && h.planId===v.plan.id ? legacyCurrent : 0)),0));
+}
 export const allocated = (p: Plan) =>
   money(Object.values(totals(p)).reduce((a, b) => a + b, 0));
 export const remaining = (p: Plan) => money(p.salary - allocated(p));
@@ -397,6 +402,7 @@ export function commitPayday(v: Vault): Vault {
         month: v.plan.month,
         salary: v.plan.salary,
         savings: v.plan.savings,
+        accountSplit: {telecel:totals(v.plan).telecel,momo:totals(v.plan).momo,first:totals(v.plan).first},
         repaid,
         date: new Date().toISOString(),
       },

@@ -1514,6 +1514,20 @@ main {
   border-top: 1px solid #edf1f7;
   padding: 20px 0;
 }
+.history-record { border-top:1px solid #edf1f7; }
+.history-record .history-row { border-top:0; }
+.history-trigger { width:100%; background:transparent; color:inherit; text-align:left; cursor:pointer; }
+.history-primary { flex:1; min-width:0; display:grid; gap:5px; }
+.history-primary strong { font-size:12px; font-weight:600; color:#334155; }
+.history-primary small { font-size:10px; color:#64748b; }
+.history-salary { font-size:12px; white-space:nowrap; }
+.history-chevron { flex:0 0 auto; color:#64748b; transition:transform .18s ease; }
+.history-trigger[aria-expanded="true"] .history-chevron { transform:rotate(180deg); }
+.history-breakdown { display:grid; gap:0; padding:0 12px 15px 48px; }
+.history-breakdown > div { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid #e2e8f0; font-size:11px; }
+.history-breakdown > div span { color:#64748b; }
+.history-breakdown > div strong { color:#1e293b; font-size:11px; font-weight:600; }
+.history-legacy-note { margin:0 12px 15px 48px; font-size:11px; color:#64748b; }
 .history-icon {
   width: 35px;
   height: 35px;

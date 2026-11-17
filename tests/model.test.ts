@@ -13,6 +13,7 @@ import {
   nextPaydayPlan,
   transportDeficit,
   transport,
+  firstBankAllocatedToDate,
   stateSchema,
   borrow,
   buyWish,
@@ -345,4 +346,15 @@ test("disabled pockets are zeroed and released funds prioritize savings offline"
   assert.equal(transport(noCommute),0);
   assert.equal(totals(noCommute).telecel,0);
   assert.equal(remaining(noCommute),0);
+});
+test("saved history records account splits and accumulates FirstBank allocations",()=>{
+  const initial=exampleVault();
+  const first=commitPayday(initial);
+  assert.deepEqual(first.history[0].accountSplit,{telecel:totals(initial.plan).telecel,momo:totals(initial.plan).momo,first:totals(initial.plan).first});
+  assert.equal(firstBankAllocatedToDate(first),totals(initial.plan).first);
+  const nextPlan=balancePlan({...nextPaydayPlan(first.plan),salary:3000,daily:0,workWeek:[]});
+  const second=commitPayday({...first,plan:nextPlan});
+  assert.equal(firstBankAllocatedToDate(second),first.history[0].accountSplit!.first+second.history[0].accountSplit!.first);
+  const legacy={...first,history:first.history.map(({accountSplit,...rest})=>rest)};
+  assert.equal(stateSchema.parse(legacy).history[0].accountSplit,undefined);
 });

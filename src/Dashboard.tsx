@@ -7,9 +7,7 @@ import {
   Heart,
   ArrowUpRight,
   ArrowRight,
-  ShieldCheck,
   LockKey,
-  Check,
   PencilSimple,
   ChartDonut,
   Wallet,
@@ -22,6 +20,7 @@ import {
   monthlyWorkdays,
   defaultAccountNames,
   defaultAccountEnabled,
+  firstBankAllocatedToDate,
   type AccountNames,
   type Vault,
   type Plan,
@@ -344,45 +343,29 @@ export default function Dashboard({
             </button>
           </div>
         </article>
-        <article className="savings-card">
+        <article className="savings-card firstbank-total-card">
           <div className="savings-top">
             <span>
-              <ShieldCheck size={14} />
-              YOUR SAFETY NET
+              <Heart size={14} />
+              LIFESTYLE & UPGRADES
             </span>
             <button
               className="icon-button"
-              aria-label={`Manage ${names.gcb} savings`}
-              onClick={() => onAccount("gcb")}
+              aria-label={`View ${names.first} account breakdown`}
+              onClick={() => onAccount("first")}
             >
               <ArrowUpRight size={21} />
             </button>
           </div>
           <div className="savings-brand">
-            <Bank size={18} />
-            <span>{names.gcb}</span>
+            <Heart size={18} />
+            <span>{names.first}</span>
           </div>
-          <h2>{cash(vault.savingsBalance)}</h2>
-
-          <div className="savings-metrics">
-            <div>
-              <span>This payday</span>
-              <strong>
-                {cash(p.savings)}
-                <ArrowUpRight size={15} />
-              </strong>
-            </div>
-            <div>
-              <span>Owed to yourself</span>
-              <strong>
-                {vault.debt ? cash(vault.debt) : "All clear"}
-                {!vault.debt && <Check size={15} />}
-              </strong>
-            </div>
-          </div>
+          <h2>{cash(firstBankAllocatedToDate(vault))}</h2>
+          <p>Total allocated across saved paydays</p>
+          {vault.history.some(h=>!h.accountSplit && h.planId !== p.id) && <small className="legacy-history-note">Earlier paydays don’t have recorded account splits.</small>}
           <button className="savings-goals-link" type="button" onClick={onFirstBank}>
-            <span><small>{names.first} · this payday</small><strong>{cash(t.first)}</strong></span>
-            <span>View account breakdown <ArrowRight size={14}/></span>
+            <span>View {names.first} breakdown <ArrowRight size={14}/></span>
           </button>
         </article>
       </section>
