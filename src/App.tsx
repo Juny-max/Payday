@@ -42,6 +42,7 @@ import {
   isPlanCommitted,
   defaultAccountNames,
   accountNamesSchema,
+  defaultAccountEnabled,
   type AccountNames,
   adjustAllocation,
   dataRequest,
@@ -399,13 +400,12 @@ export default function App() {
     committed = isPlanCommitted(vault),
     draftLocked = isPlanCommitted(vault, draft),
     accountNames = vault.accountNames ?? defaultAccountNames;
+  const accountEnabled = vault.accountEnabled ?? defaultAccountEnabled;
   const active = p.wishes.filter((w) => !w.bought),
     archived = p.wishes.filter((w) => w.bought);
   function openPayday() {
     setDraft(
-      committed || p.dataRequested !== undefined
-        ? structuredClone(p)
-        : balancePlan(p),
+      committed ? structuredClone(p) : balancePlan(p, accountEnabled),
     );
     setModal("payday");
   }
@@ -439,7 +439,7 @@ export default function App() {
         "dataRequested",
         "midnight",
       ].includes(key)
-        ? balancePlan(next)
+        ? balancePlan(next, accountEnabled)
         : next;
     });
   }
@@ -465,7 +465,7 @@ export default function App() {
     }
   }
   function nextMonth() {
-    setDraft(nextPaydayPlan(p));
+    setDraft(balancePlan({...nextPaydayPlan(p),accountEnabled},accountEnabled));
     setModal("payday");
   }
   async function runAI() {
@@ -688,6 +688,9 @@ export default function App() {
             onNext={nextMonth}
             onAccounts={() => setView("accounts")}
             onAccount={openAccount}
+            enabled={accountEnabled}
+            onToggle={key=>{ const current=latestVault.current; const currentEnabled=current.accountEnabled??defaultAccountEnabled; const next={...current,accountEnabled:{...currentEnabled,[key]:!currentEnabled[key]}}; latestVault.current=next; void persist(next).then(ok=>{if(ok)notify(`${(current.accountNames??defaultAccountNames)[key]} ${currentEnabled[key]?"turned off":"turned on"}. This applies to new payday plans.`);}); }}
+            onRename={(key,name)=>{ if(!name.trim()) return; const current=latestVault.current; const next={...current,accountNames:{...(current.accountNames??defaultAccountNames),[key]:name}}; latestVault.current=next; void persist(next); }}
           />
         )}
         {view === "overview" && (
@@ -1440,10 +1443,10 @@ export default function App() {
               Plan this payday with AI
             </button>
             <p className="settings-note">
-              Pay, commute and data changes recalculate the pockets. The
-              suggestion protects feeding first (up to 45% of pay when
-              available), then optional data and up to 15% savings. Manual
-              pocket edits rebalance the others.
+              Pay, commute and data changes recalculate the pockets. Active
+              account preferences apply to this new plan. When a pocket is off,
+              its share is redistributed with savings prioritized; data remains
+              optional. Manual pocket edits leave reductions unallocated.
             </p>
             <div className="planner-top">
               <label className="field">
@@ -1471,6 +1474,7 @@ export default function App() {
                 <Field
                   label="Daily in & out fare"
                   value={draft.daily}
+                  disabled={draft.accountEnabled?.telecel === false}
                   onChange={(v) => updateDraft("daily", v)}
                 />
                 <label className="field">
@@ -1481,6 +1485,7 @@ export default function App() {
                     min={0}
                     max={7}
                     value={draft.workWeek?.length ?? 0}
+                    disabled={draft.accountEnabled?.telecel === false}
                     onChange={(e) =>
                       updateDraft(
                         "workWeek",
@@ -1515,6 +1520,7 @@ export default function App() {
                   <button
                     key={w.day}
                     type="button"
+                    disabled={draft.accountEnabled?.telecel === false}
                     aria-pressed={draft.workWeek?.includes(w.day) ?? false}
                     aria-label={w.name}
                     onClick={() =>
@@ -1560,6 +1566,7 @@ export default function App() {
                   aria-checked={draft.data !== "company"}
                   aria-label="Fund data this month"
                   className={`data-switch ${draft.data !== "company" ? "on" : ""}`}
+                  disabled={draft.accountEnabled?.telecel === false}
                   onClick={() =>
                     setDraft((d) =>
                       balancePlan({
@@ -1582,6 +1589,7 @@ export default function App() {
                     <span>Funding schedule</span>
                     <select
                       aria-label="Data funding schedule"
+                      disabled={draft.accountEnabled?.telecel === false}
                       value={
                         (draft.dataMonthsRemaining ?? 1) + (draftLocked ? 1 : 0)
                       }
@@ -1601,6 +1609,7 @@ export default function App() {
                   <Field
                     label="Requested monthly data reserve"
                     value={dataRequest(draft)}
+                    disabled={draft.accountEnabled?.telecel === false}
                     onChange={(v) => updateDraft("dataRequested", v)}
                     hint="Choose any amount. GH 399 bundle / GH 200 split are optional shortcuts."
                   />
@@ -1652,6 +1661,7 @@ export default function App() {
                   <Field
                     label="Midnight download buffer (optional)"
                     value={draft.midnight}
+                    disabled={draft.accountEnabled?.telecel === false}
                     max={50}
                     onChange={(v) => updateDraft("midnight", v)}
                     hint="Optional, and included only while data funding is on."
@@ -1673,6 +1683,7 @@ export default function App() {
                 <button
                   type="button"
                   className="text-link"
+                  disabled={draft.accountEnabled?.gcb === false}
                   onClick={() =>
                     updateDraft("savings", balancePlan(draft).savings)
                   }
@@ -1688,6 +1699,7 @@ export default function App() {
                   max={Math.max(1, affordablePool(draft))}
                   step={1}
                   value={draft.savings}
+                  disabled={draft.accountEnabled?.gcb === false}
                   onChange={(e) =>
                     updateDraft("savings", Number(e.target.value))
                   }
@@ -1695,6 +1707,7 @@ export default function App() {
                 <Field
                   label={`Savings · ${draft.salary ? Math.round((draft.savings / draft.salary) * 100) : 0}%`}
                   value={draft.savings}
+                  disabled={draft.accountEnabled?.gcb === false}
                   onChange={(v) => updateDraft("savings", v)}
                 />
               </div>
@@ -1714,12 +1727,14 @@ export default function App() {
                 <Field
                   label="Bulk cooking foodstuffs"
                   value={draft.bulk}
+                  disabled={draft.accountEnabled?.momo === false}
                   sliderMax={draft.salary}
                   onChange={(v) => updateDraft("bulk", v)}
                 />
                 <Field
                   label="Buying food outside"
                   value={draft.outside}
+                  disabled={draft.accountEnabled?.momo === false}
                   sliderMax={draft.salary}
                   onChange={(v) => updateDraft("outside", v)}
                 />
@@ -1734,12 +1749,14 @@ export default function App() {
                 <Field
                   label="Wardrobe & upkeep"
                   value={draft.wardrobe}
+                  disabled={draft.accountEnabled?.first === false}
                   sliderMax={draft.salary}
                   onChange={(v) => updateDraft("wardrobe", v)}
                 />
                 <Field
                   label="Partner & social buffer"
                   value={draft.partner}
+                  disabled={draft.accountEnabled?.first === false}
                   sliderMax={draft.salary}
                   onChange={(v) => updateDraft("partner", v)}
                 />
@@ -1757,6 +1774,7 @@ export default function App() {
                     <Field
                       label="This payday"
                       value={w.contribution}
+                      disabled={draft.accountEnabled?.first === false}
                       max={Math.max(0, w.cost - w.funded)}
                       onChange={(v) =>
                         updateDraft(

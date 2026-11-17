@@ -1,5 +1,5 @@
 import {useCurrency} from "./Currency";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Bank,
   Bus,
@@ -263,6 +263,9 @@ export default function Dashboard({
   onNext,
   onAccounts,
   onAccount,
+  enabled,
+  onToggle,
+  onRename,
   showAccounts,
 }: {
   names?: AccountNames;
@@ -272,9 +275,14 @@ export default function Dashboard({
   onNext: () => void;
   onAccounts: () => void;
   onAccount: (key: AccountKey) => void;
+  enabled: Record<AccountKey, boolean>;
+  onToggle: (key: AccountKey) => void;
+  onRename: (key: AccountKey, name: string) => void;
   showAccounts: boolean;
 }) {
   const {cash,symbol,label,number}=useCurrency();
+  const [editedNames,setEditedNames]=useState(names);
+  useEffect(()=>setEditedNames(names),[names]);
   const p = vault.plan,
     t = totals(p),
     left = remaining(p);
@@ -374,7 +382,7 @@ export default function Dashboard({
           <div className="accounts-heading">
             <div>
               <h2>
-                Your accounts <span>4 pockets, one plan</span>
+                Your accounts <span>{Object.values(enabled).filter(Boolean).length} active pockets · turn off what you don’t need</span>
               </h2>
             </div>
             <button onClick={onPlan}>
@@ -392,7 +400,7 @@ export default function Dashboard({
                   <span className="bank-symbol" style={{ color: a.color }}>
                     <a.icon size={20} />
                   </span>
-                  <h3>{names[a.key]}</h3>
+                <input className="account-name-input" aria-label={`${names[a.key]} name`} value={editedNames[a.key]} maxLength={40} onClick={event=>event.stopPropagation()} onChange={event=>setEditedNames({...editedNames,[a.key]:event.target.value})} onBlur={()=>onRename(a.key,editedNames[a.key])} />
                   <button
                     aria-label={`Open ${names[a.key]}`}
                     onClick={() => onAccount(a.key)}
@@ -401,6 +409,7 @@ export default function Dashboard({
                   </button>
                 </div>
                 <p className="bank-category">{a.category}</p>
+                {!enabled[a.key] && <small className="pocket-disabled-note">Off for new payday plans</small>}
                 <div className="bank-amount">{cash(t[a.key])}</div>
                 <div className="bank-meta">
                   <span>
@@ -440,6 +449,9 @@ export default function Dashboard({
                         ? "View feeding split"
                         : "View lifestyle split"}
                   <ArrowRight size={13} />
+                </button>
+                <button className="bank-action pocket-toggle" aria-pressed={enabled[a.key]} onClick={(event) => { event.stopPropagation(); onToggle(a.key); }}>
+                  {enabled[a.key] ? "Turn pocket off" : "Turn pocket on"}
                 </button>
               </article>
             ))}

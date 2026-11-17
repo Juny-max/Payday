@@ -12,6 +12,7 @@ export const itemSchema = z.object({
   bought: z.boolean(),
 });
 export const planSchema = z.object({
+  accountEnabled: z.object({gcb:z.boolean(),telecel:z.boolean(),momo:z.boolean(),first:z.boolean()}).optional(),
   id: z.string().optional(),
   workWeek: z.array(z.number().int().min(0).max(6)).max(7).optional(),
   month: z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/),
@@ -42,12 +43,14 @@ export const accountNamesSchema = z.object({
   momo: z.string().trim().min(1).max(40),
   first: z.string().trim().min(1).max(40),
 });
+export const accountEnabledSchema = z.object({gcb:z.boolean(),telecel:z.boolean(),momo:z.boolean(),first:z.boolean()});
 export const defaultAccountNames = {
   gcb: "GCB Bank",
   telecel: "Telecel Cash",
   momo: "MTN MoMo",
   first: "FirstBank",
 };
+export const defaultAccountEnabled = {gcb:true,telecel:true,momo:true,first:true};
 export type AccountNames = z.infer<typeof accountNamesSchema>;
 export const currencySchema = z.enum(["GHS", "USD", "GBP"]);
 export type Currency = z.infer<typeof currencySchema>;
@@ -66,6 +69,7 @@ export function displayAmount(n: number, currency: Currency, rates?: ExchangeRat
   return money(n * rates[currency]);
 }
 export const stateSchema = z.object({
+  accountEnabled: accountEnabledSchema.optional(),
   displayCurrency: currencySchema.optional(),
   exchangeRates: exchangeRatesSchema.optional(),
   accountNames: accountNamesSchema.optional(),
@@ -113,7 +117,7 @@ export function calendarWorkdays(month: string, week: number[]): number {
 }
 export const monthlyWorkdays = (p: Plan) =>
   p.workWeek ? calendarWorkdays(p.month, p.workWeek) : p.days;
-export const transport = (p: Plan) => money(p.daily * monthlyWorkdays(p));
+export const transport = (p: Plan) => p.accountEnabled?.telecel === false ? 0 : money(p.daily * monthlyWorkdays(p));
 export const isPlanCommitted = (v: Vault, p: Plan = v.plan) =>
   v.history.some((h) => (p.id ? h.planId === p.id : h.month === p.month));
 export const dataRequest = (p: Plan) =>
@@ -122,17 +126,17 @@ export const dataRequest = (p: Plan) =>
     : (p.dataRequested ??
       (p.data === "full" ? 399 : p.data === "half" ? 200 : 0));
 export const dataCost = (p: Plan) =>
-  p.data === "company" ? 0 : (p.dataReserve ?? dataRequest(p));
-export const nightCost = (p: Plan) => (p.data === "company" ? 0 : p.midnight);
+  p.accountEnabled?.telecel === false || p.data === "company" ? 0 : (p.dataReserve ?? dataRequest(p));
+export const nightCost = (p: Plan) => (p.accountEnabled?.telecel === false || p.data === "company" ? 0 : p.midnight);
 export const affordablePool = (p: Plan) =>
   money(Math.max(0, p.salary - transport(p) - dataCost(p) - nightCost(p)));
 export const transportDeficit = (p: Plan) =>
   money(Math.max(0, transport(p) - p.salary));
 export const totals = (p: Plan) => ({
-  gcb: p.savings,
+  gcb: p.accountEnabled?.gcb === false ? 0 : p.savings,
   telecel: money(transport(p) + dataCost(p) + nightCost(p)),
-  momo: money(p.bulk + p.outside),
-  first: money(
+  momo: p.accountEnabled?.momo === false ? 0 : money(p.bulk + p.outside),
+  first: p.accountEnabled?.first === false ? 0 : money(
     p.wardrobe + p.partner + p.wishes.reduce((s, w) => s + w.contribution, 0),
   ),
 });
@@ -141,6 +145,11 @@ export const allocated = (p: Plan) =>
 export const remaining = (p: Plan) => money(p.salary - allocated(p));
 export function validatePlan(p: Plan) {
   planSchema.parse(p);
+  const enabled = p.accountEnabled ?? defaultAccountEnabled;
+  if (!enabled.gcb && p.savings > 0) throw new Error("GCB savings is off. Recalculate the split or turn that pocket back on.");
+  if (!enabled.telecel && (dataCost(p) > 0 || nightCost(p) > 0)) throw new Error("Commute & data is off. Recalculate the split before saving.");
+  if (!enabled.momo && (p.bulk > 0 || p.outside > 0)) throw new Error("Feeding is off. Recalculate the split before saving.");
+  if (!enabled.first && (p.wardrobe > 0 || p.partner > 0 || p.wishes.some(w=>w.contribution > 0))) throw new Error("Lifestyle & upgrades is off. Recalculate the split before saving.");
   if (p.workWeek && new Set(p.workWeek).size !== p.workWeek.length)
     throw new Error("Select each weekday only once.");
   if (p.salary <= 0) throw new Error("Enter a salary greater than zero.");
@@ -162,7 +171,40 @@ export function validatePlan(p: Plan) {
 /** Offline heuristic: commute first, protect up to 45% of pay for food,
  * then optional data, affordable savings (up to 15%), and lifestyle goals.
  * This is a transparent starting suggestion, not a cost-of-living estimate. */
-export function balancePlan(p: Plan): Plan {
+export function balancePlan(p: Plan, enabled = p.accountEnabled ?? defaultAccountEnabled): Plan {
+  p = {...p, accountEnabled: enabled};
+  const allActive = Object.values(enabled).every(Boolean);
+  if (!allActive) {
+    const base = balancePlan({...p, accountEnabled: defaultAccountEnabled}, defaultAccountEnabled);
+    const baseTotals = totals(base);
+    const released = money((enabled.gcb ? 0 : baseTotals.gcb) + (enabled.telecel ? 0 : baseTotals.telecel) + (enabled.momo ? 0 : baseTotals.momo) + (enabled.first ? 0 : baseTotals.first));
+    const next: Plan = {...base, accountEnabled: enabled,
+      savings: enabled.gcb ? base.savings : 0,
+      daily: p.daily, days: p.days,
+      dataReserve: enabled.telecel ? base.dataReserve : 0,
+      midnight: enabled.telecel ? base.midnight : 0,
+      bulk: enabled.momo ? base.bulk : 0, outside: enabled.momo ? base.outside : 0,
+      wardrobe: enabled.first ? base.wardrobe : 0, partner: enabled.first ? base.partner : 0,
+      wishes: base.wishes.map(w=>({...w, contribution: enabled.first ? w.contribution : 0}))};
+    const recipients: ("momo"|"first")[] = [ ...(enabled.momo ? ["momo" as const] : []), ...(enabled.first ? ["first" as const] : []) ];
+    let savingExtra = enabled.gcb ? money(released * (recipients.length ? 0.6 : 1)) : 0;
+    next.savings = money(next.savings + savingExtra);
+    let remainder = money(released - savingExtra);
+    const weights = recipients.map(key=>key === "momo" ? baseTotals.momo : baseTotals.first);
+    const weightTotal = weights.reduce((a,b)=>a+b,0);
+    recipients.forEach((key,i)=>{
+      const share = i === recipients.length-1 ? remainder : money(released - savingExtra) * (weightTotal ? weights[i]/weightTotal : 1/recipients.length);
+      if(key === "momo") { const add=money(share), bulkAdd=money(add*0.65); next.bulk=money(next.bulk+bulkAdd); next.outside=money(next.outside+add-bulkAdd); }
+      else next.wardrobe=money(next.wardrobe+share);
+      remainder=money(remainder-share);
+    });
+    const rounding=remaining(next);
+    const last=recipients.at(-1);
+    if(last === "momo") next.outside=money(Math.max(0,next.outside+rounding));
+    else if(last === "first") next.wardrobe=money(Math.max(0,next.wardrobe+rounding));
+    else if(enabled.gcb) next.savings=money(Math.max(0,next.savings+rounding));
+    return {...next, outside: enabled.momo ? money(next.outside) : 0, explanation:`Disabled pocket funds are redistributed with 60% directed to savings and the remainder shared across active flexible pockets.`};
+  }
   const available = money(Math.max(0, p.salary - transport(p)));
   const foodFloor = money(Math.min(available, p.salary * 0.45));
   let flexible = money(available - foodFloor);
@@ -269,6 +311,7 @@ export function nextPaydayPlan(p: Plan, now = new Date()): Plan {
   const empty = initialVault().plan;
   return {
     ...empty,
+    accountEnabled: p.accountEnabled ?? defaultAccountEnabled,
     id: crypto.randomUUID(),
     month: monthNow(now),
     wishes: p.wishes.map((w) => ({ ...w, contribution: 0 })),
@@ -291,6 +334,7 @@ export function continueDataPlan(p: Plan): Plan {
 }
 export const initialVault = (): Vault => ({
   version: 1,
+  accountEnabled: defaultAccountEnabled,
   plan: {
     id: crypto.randomUUID(),
     workWeek: [],
@@ -309,6 +353,7 @@ export const initialVault = (): Vault => ({
     wardrobe: 0,
     partner: 0,
     wishes: [],
+    accountEnabled: defaultAccountEnabled,
     explanation: "",
   },
   savingsBalance: 0,

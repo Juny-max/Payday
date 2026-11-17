@@ -12,6 +12,7 @@ import {
   dataRequest,
   nextPaydayPlan,
   transportDeficit,
+  transport,
   stateSchema,
   borrow,
   buyWish,
@@ -330,4 +331,18 @@ test("manual reductions leave money unallocated instead of hiding it in feeding"
   assert.equal(remaining(adjusted), 350);
   assert.equal(adjusted.bulk, p.bulk);
   assert.equal(adjusted.outside, p.outside);
+});
+test("disabled pockets are zeroed and released funds prioritize savings offline", () => {
+  const base=balancePlan({...exampleVault().plan,salary:3000,daily:25,days:22});
+  const enabled={gcb:true,telecel:true,momo:false,first:true};
+  const changed=balancePlan(base,enabled);
+  assert.equal(totals(changed).momo,0);
+  assert.equal(changed.accountEnabled?.momo,false);
+  const released=totals(base).momo;
+  assert.ok(changed.savings >= base.savings + released*0.59);
+  assert.equal(remaining(changed),0);
+  const noCommute=balancePlan(base,{...enabled,telecel:false,momo:true});
+  assert.equal(transport(noCommute),0);
+  assert.equal(totals(noCommute).telecel,0);
+  assert.equal(remaining(noCommute),0);
 });

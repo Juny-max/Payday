@@ -533,6 +533,11 @@ main {
 .bank-first .bank-action {
   color: #8390af;
 }
+.account-name-input { min-width:0; width:calc(100% - 48px); border:0; background:transparent; color:#111827; font:inherit; font-size:11px; font-weight:650; padding:2px 0; }
+.account-name-input:focus { outline:2px solid #93c5fd; outline-offset:2px; border-radius:4px; }
+.pocket-disabled-note { display:block; color:#64748b; font-size:9px; margin-top:4px; }
+.pocket-toggle { border-top:0; color:#2563eb!important; font-weight:700; }
+.pocket-toggle[aria-pressed="true"] { color:#b42318!important; }
 .bottom-grid {
   grid-template-columns: 0.9fr 1.2fr 1fr;
   gap: 15px;
