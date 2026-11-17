@@ -269,7 +269,7 @@ export default function Dashboard({
   enabled,
   onToggle,
   onRename,
-  onGoals,
+  onFirstBank,
   showAccounts,
 }: {
   names?: AccountNames;
@@ -282,7 +282,7 @@ export default function Dashboard({
   enabled: Record<AccountKey, boolean>;
   onToggle: (key: AccountKey) => void;
   onRename: (key: AccountKey, name: string) => void;
-  onGoals: () => void;
+  onFirstBank: () => void;
   showAccounts: boolean;
 }) {
   const {cash,symbol,label,number}=useCurrency();
@@ -380,9 +380,9 @@ export default function Dashboard({
               </strong>
             </div>
           </div>
-          <button className="savings-goals-link" type="button" onClick={onGoals}>
-            <span><small>Saved toward upgrades</small><strong>{cash(p.wishes.filter(w=>!w.bought).reduce((sum,w)=>sum+w.funded,0))}</strong></span>
-            <span>View goal progress <ArrowRight size={14}/></span>
+          <button className="savings-goals-link" type="button" onClick={onFirstBank}>
+            <span><small>{names.first} · this payday</small><strong>{cash(t.first)}</strong></span>
+            <span>View account breakdown <ArrowRight size={14}/></span>
           </button>
         </article>
       </section>

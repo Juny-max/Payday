@@ -406,11 +406,6 @@ main {
 .savings-goals-link small { font-size:8px; color:#dbeafe; }
 .savings-goals-link strong { font-size:13px; font-weight:650; font-variant-numeric:tabular-nums; }
 .savings-goals-link > span:last-child { display:flex; align-items:center; gap:5px; font-size:9px; white-space:nowrap; }
-.goal-progress-details .report-total { margin-bottom:14px; }
-.goal-progress-details dl { display:grid; gap:12px; }
-.goal-progress-details .report-row { display:grid; grid-template-columns:1fr auto; gap:5px 12px; align-items:center; }
-.goal-progress-track { grid-column:1/-1; height:6px; overflow:hidden; background:#e2e8f0; border-radius:99px; }
-.goal-progress-track i { display:block; height:100%; background:#2563eb; border-radius:99px; }
 .accounts-heading {
   display: flex;
   align-items: center;
