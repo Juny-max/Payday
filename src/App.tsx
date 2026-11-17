@@ -68,6 +68,7 @@ type Modal =
   | "borrow"
   | "copilot"
   | "account"
+  | "goals"
   | "reset"
   | null;
 const dateLabel = (month: string) =>
@@ -285,6 +286,19 @@ function AccountReportDetails({
       )}
     </div>
   );
+}
+function GoalProgressDetails({vault}:{vault:Vault}) {
+  const {cash}=useCurrency();
+  const goals=vault.plan.wishes.filter(w=>!w.bought);
+  const funded=goals.reduce((sum,w)=>sum+w.funded,0);
+  return <div className="goal-progress-details">
+    <div className="report-total"><span>Saved toward active upgrades</span><strong>{cash(funded)}</strong></div>
+    {goals.length ? <dl>{goals.map(goal=><div className="report-row" key={goal.id}>
+      <dt>{goal.name}<small>{cash(Math.max(0,goal.cost-goal.funded))} left of {cash(goal.cost)}</small></dt>
+      <dd>{cash(goal.funded)}</dd>
+      <div className="goal-progress-track" aria-label={`${goal.name}: ${goal.cost ? Math.min(100,Math.round(goal.funded/goal.cost*100)) : 0}% funded`}><i style={{width:`${goal.cost ? Math.min(100,goal.funded/goal.cost*100) : 0}%`}}/></div>
+    </div>)}</dl> : <p className="settings-note">No active upgrade goals yet. Add an item to your wishlist and its payday contributions will appear here.</p>}
+  </div>;
 }
 export default function App() {
   const [vault, setVault] = useState<Vault>(initialVault),
@@ -691,6 +705,7 @@ export default function App() {
             enabled={accountEnabled}
             onToggle={key=>{ const current=latestVault.current; const currentEnabled=current.accountEnabled??defaultAccountEnabled; const next={...current,accountEnabled:{...currentEnabled,[key]:!currentEnabled[key]}}; latestVault.current=next; void persist(next).then(ok=>{if(ok)notify(`${(current.accountNames??defaultAccountNames)[key]} ${currentEnabled[key]?"turned off":"turned on"}. This applies to new payday plans.`);}); }}
             onRename={(key,name)=>{ if(!name.trim()) return; const current=latestVault.current; const next={...current,accountNames:{...(current.accountNames??defaultAccountNames),[key]:name}}; latestVault.current=next; void persist(next); }}
+            onGoals={()=>setModal("goals")}
           />
         )}
         {view === "overview" && (
@@ -1299,6 +1314,12 @@ export default function App() {
           onClose={() => setModal(null)}
         >
           <AccountReportDetails vault={vault} account={selectedAccount} />
+        </ModalFrame>
+      )}
+      {modal === "goals" && (
+        <ModalFrame title="Upgrade goal progress" subtitle="Wishlist contributions are tracked separately from money saved in GCB." onClose={()=>setModal(null)}>
+          <GoalProgressDetails vault={vault}/>
+          <button className="secondary full-width" onClick={()=>{setModal(null);setView("wishlist");}}>Open wishlist <ArrowRight size={15}/></button>
         </ModalFrame>
       )}
       {modal === "reset" && (

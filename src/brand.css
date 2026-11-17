@@ -19,6 +19,9 @@ body {background:#f8fafc;}
 #root .savings-top > span {background:#ffffff14;border-color:#ffffff55;}
 #root .savings-metrics > div {background:#ffffff1c;border-color:#ffffff30;}
 #root .savings-metrics span {color:#dbeafe;}
+#root .savings-goals-link {color:#fff;}
+#root .savings-goals-link small {color:#dbeafe;}
+#root .savings-goals-link:hover {background:#ffffff24;}
 #root .balance-circle {background:#2563eb;color:#fff;}
 #root .wishlist-copilot,#root .locked-total,#root .data-toggle-row {background:#eff6ff;border-color:#dbeafe;color:#1d4ed8;}
 #root .settings-eyebrow,#root .settings-links button[aria-selected="true"],#root .settings-version {color:#1d4ed8;}
