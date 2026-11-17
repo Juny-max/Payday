@@ -536,8 +536,13 @@ main {
 .account-name-input { min-width:0; width:calc(100% - 48px); border:0; background:transparent; color:#111827; font:inherit; font-size:11px; font-weight:650; padding:2px 0; }
 .account-name-input:focus { outline:2px solid #93c5fd; outline-offset:2px; border-radius:4px; }
 .pocket-disabled-note { display:block; color:#64748b; font-size:9px; margin-top:4px; }
-.pocket-toggle { border-top:0; color:#2563eb!important; font-weight:700; }
-.pocket-toggle[aria-pressed="true"] { color:#b42318!important; }
+.pocket-toggle { border-top:0; color:#475569!important; font-weight:650; display:flex; align-items:center; }
+.pocket-toggle:hover { background:transparent; }
+.pocket-switch-track { display:inline-flex; width:34px; height:19px; border-radius:99px; background:#cbd5e1; align-items:center; padding:2px; transition:background .18s ease; flex-shrink:0; }
+.pocket-switch-track > i { width:15px; height:15px; border-radius:50%; background:#fff; box-shadow:0 1px 3px #0f172a33; transition:transform .18s ease; }
+.pocket-toggle[aria-checked="true"] .pocket-switch-track { background:#2563eb; }
+.pocket-toggle[aria-checked="true"] .pocket-switch-track > i { transform:translateX(15px); }
+.pocket-toggle:focus-visible { outline:2px solid #2563eb; outline-offset:-2px; border-radius:6px; }
 .bottom-grid {
   grid-template-columns: 0.9fr 1.2fr 1fr;
   gap: 15px;

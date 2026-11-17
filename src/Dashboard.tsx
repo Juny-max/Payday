@@ -450,8 +450,9 @@ export default function Dashboard({
                         : "View lifestyle split"}
                   <ArrowRight size={13} />
                 </button>
-                <button className="bank-action pocket-toggle" aria-pressed={enabled[a.key]} onClick={(event) => { event.stopPropagation(); onToggle(a.key); }}>
-                  {enabled[a.key] ? "Turn pocket off" : "Turn pocket on"}
+                <button className="bank-action pocket-toggle" type="button" role="switch" aria-checked={enabled[a.key]} aria-label={`${names[a.key]} pocket`} onClick={(event) => { event.stopPropagation(); onToggle(a.key); }}>
+                  <span>{enabled[a.key] ? "Include in payday" : "Exclude from payday"}</span>
+                  <i className="pocket-switch-track" aria-hidden="true"><i /></i>
                 </button>
               </article>
             ))}
