@@ -21,6 +21,16 @@ try {
     .fill("46");
   await page.getByRole("button", { name: "Save payday", exact: true }).click();
   await page.getByRole("dialog").waitFor({ state: "hidden" });
+  assert.equal(await page.locator(".savings-card").count(), 1);
+  assert.equal(await page.locator(".firstbank-total-card").count(), 0);
+  const safetyNetMetrics = await page.locator(".savings-metrics").innerText();
+  assert.match(safetyNetMetrics, /FirstBank total/);
+  assert.match(safetyNetMetrics, /175\.50/);
+  assert.match(safetyNetMetrics, /Owed to yourself/);
+  assert.doesNotMatch(safetyNetMetrics, /This payday/);
+  await page.locator(".firstbank-metric").click();
+  assert.match(await page.getByRole("dialog").innerText(), /175\.50/);
+  await page.getByRole("button", { name: "Close dialog" }).click();
   await page.getByRole("button", { name: "Details for Telecel Cash" }).click();
   assert.match(await page.getByRole("dialog").innerText(), /966\.00/);
   assert.match(
@@ -70,6 +80,7 @@ try {
     .waitFor();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByRole("tab", {name:"Reset & uninstall",exact:true}).click();
+  await page.getByRole("tab", {name:"Accounts",exact:true}).click();
   await page
     .getByRole("textbox", { name: "first account name" })
     .fill("Practice bank");
@@ -79,6 +90,7 @@ try {
     .filter({ hasText: "Account names updated." })
     .waitFor();
 
+  await page.getByRole("tab", {name:"Reset & uninstall",exact:true}).click();
   await page
     .getByRole("button", { name: "Reset everything", exact: true })
     .click();

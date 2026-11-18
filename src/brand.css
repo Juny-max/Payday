@@ -18,6 +18,8 @@ body {background:#f8fafc;}
 #root .savings-card * {color:inherit;}
 #root .savings-top > span {background:#ffffff14;border-color:#ffffff55;}
 #root .savings-metrics > div {background:#ffffff1c;border-color:#ffffff30;}
+#root .savings-metrics > button.firstbank-metric {display:block;width:100%;min-width:0;padding:10px 12px;border:1px solid #ffffff30;border-radius:10px;background:#ffffff1c;color:inherit;text-align:left;cursor:pointer;}
+#root .savings-metrics > button.firstbank-metric:hover {background:#ffffff28;}
 #root .savings-metrics span {color:#dbeafe;}
 #root .balance-circle {background:#2563eb;color:#fff;}
 #root .wishlist-copilot,#root .locked-total,#root .data-toggle-row {background:#eff6ff;border-color:#dbeafe;color:#1d4ed8;}

@@ -324,13 +324,6 @@ main {
   color: #24422b;
   min-width: 0;
 }
-.account-snapshot-stack { display:grid; gap:12px; min-width:0; align-content:start; }
-.firstbank-total-card { padding:15px 21px 14px; border:1px solid #bfdbfe; border-radius:18px; background:#eff6ff; color:#1e3a8a; min-width:0; }
-.firstbank-total-card .savings-top > span { color:#1d4ed8; background:#fff; border-color:#bfdbfe; }
-.firstbank-total-label { display:flex; align-items:center; gap:7px; margin-top:8px; color:#1d4ed8; font-size:12px; }
-.firstbank-total-card h2 { color:#1e3a8a; font-size:28px; font-weight:600; letter-spacing:-.7px; line-height:1.3; margin-top:4px; font-variant-numeric:tabular-nums; }
-.firstbank-total-card > p { color:#64748b; font-size:9px; margin-top:2px; }
-.firstbank-total-card .legacy-history-note { display:block; margin-top:5px; font-size:8px; color:#64748b; }
 .savings-top {
   display: flex;
   justify-content: space-between;
@@ -383,7 +376,7 @@ main {
   gap: 9px;
   margin-top: 17px;
 }
-.savings-metrics > div {
+.savings-metrics > :is(div, button.firstbank-metric) {
   padding: 10px 12px;
   border: 1px solid #dbf6be50;
   background: #ffffff2b;
@@ -1256,7 +1249,7 @@ main {
   .savings-metrics {
     gap: 6px;
   }
-  .savings-metrics > div {
+.savings-metrics > :is(div, button.firstbank-metric) {
     padding: 9px;
   }
   .savings-metrics strong {
@@ -1594,7 +1587,7 @@ main {
   .savings-metrics {
     margin-top: 17px;
   }
-  .savings-metrics > div {
+.savings-metrics > :is(div, button.firstbank-metric) {
     padding: 10px 12px;
   }
   .savings-metrics strong {
@@ -2562,7 +2555,7 @@ h1 {
   .savings-metrics {
     margin-top: 12px;
   }
-  .savings-metrics > div {
+.savings-metrics > :is(div, button.firstbank-metric) {
     padding: 8px 11px;
   }
   .bottom-grid {
@@ -2738,7 +2731,7 @@ h1 {
 .overview-layout .savings-metrics {
   margin-top: 18px;
 }
-.overview-layout .savings-metrics > div {
+.overview-layout .savings-metrics > :is(div, button.firstbank-metric) {
   padding: 10px 12px;
 }
 .overview-layout .savings-metrics span {

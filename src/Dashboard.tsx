@@ -343,7 +343,6 @@ export default function Dashboard({
             </button>
           </div>
         </article>
-        <div className="account-snapshot-stack">
         <article className="savings-card">
           <div className="savings-top">
             <span><ShieldCheck size={14} />YOUR SAFETY NET</span>
@@ -352,30 +351,13 @@ export default function Dashboard({
           <div className="savings-brand"><Bank size={18}/><span>{names.gcb}</span></div>
           <h2>{cash(vault.savingsBalance)}</h2>
           <div className="savings-metrics">
-            <div><span>This payday</span><strong>{cash(p.savings)}<ArrowUpRight size={15}/></strong></div>
+            <button type="button" className="firstbank-metric" onClick={() => onAccount("first")} aria-label={`View ${names.first} total and breakdown`}>
+              <span>{names.first} total</span>
+              <strong>{cash(firstBankAllocatedToDate(vault))}<ArrowUpRight size={15}/></strong>
+            </button>
             <div><span>Owed to yourself</span><strong>{vault.debt?cash(vault.debt):"All clear"}{!vault.debt&&<Check size={15}/>}</strong></div>
           </div>
         </article>
-        <article className="firstbank-total-card">
-          <div className="savings-top">
-            <span>
-              <Heart size={14} />
-              LIFESTYLE & UPGRADES
-            </span>
-            <button
-              className="icon-button"
-              aria-label={`View ${names.first} account breakdown`}
-              onClick={() => onAccount("first")}
-            >
-              <ArrowUpRight size={21} />
-            </button>
-          </div>
-          <div className="firstbank-total-label"><Heart size={17}/><span>{names.first}</span></div>
-          <h2>{cash(firstBankAllocatedToDate(vault))}</h2>
-          <p>Total allocated across saved paydays</p>
-          {vault.history.some(h=>!h.accountSplit && h.planId !== p.id) && <small className="legacy-history-note">Earlier paydays don’t have recorded account splits.</small>}
-        </article>
-        </div>
       </section>
       {showAccounts && (
         <>
