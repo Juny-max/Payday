@@ -692,7 +692,6 @@ export default function App() {
             enabled={accountEnabled}
             onToggle={key=>{ const current=latestVault.current; const currentEnabled=current.accountEnabled??defaultAccountEnabled; const next={...current,accountEnabled:{...currentEnabled,[key]:!currentEnabled[key]}}; latestVault.current=next; void persist(next).then(ok=>{if(ok)notify(`${(current.accountNames??defaultAccountNames)[key]} ${currentEnabled[key]?"turned off":"turned on"}. This applies to new payday plans.`);}); }}
             onRename={(key,name)=>{ if(!name.trim()) return; const current=latestVault.current; const next={...current,accountNames:{...(current.accountNames??defaultAccountNames),[key]:name}}; latestVault.current=next; void persist(next); }}
-            onFirstBank={()=>openAccount("first")}
           />
         )}
         {view === "overview" && (

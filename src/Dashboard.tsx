@@ -7,7 +7,9 @@ import {
   Heart,
   ArrowUpRight,
   ArrowRight,
+  ShieldCheck,
   LockKey,
+  Check,
   PencilSimple,
   ChartDonut,
   Wallet,
@@ -268,7 +270,6 @@ export default function Dashboard({
   enabled,
   onToggle,
   onRename,
-  onFirstBank,
   showAccounts,
 }: {
   names?: AccountNames;
@@ -281,7 +282,6 @@ export default function Dashboard({
   enabled: Record<AccountKey, boolean>;
   onToggle: (key: AccountKey) => void;
   onRename: (key: AccountKey, name: string) => void;
-  onFirstBank: () => void;
   showAccounts: boolean;
 }) {
   const {cash,symbol,label,number}=useCurrency();
@@ -343,7 +343,20 @@ export default function Dashboard({
             </button>
           </div>
         </article>
-        <article className="savings-card firstbank-total-card">
+        <div className="account-snapshot-stack">
+        <article className="savings-card">
+          <div className="savings-top">
+            <span><ShieldCheck size={14} />YOUR SAFETY NET</span>
+            <button className="icon-button" aria-label={`Manage ${names.gcb} savings`} onClick={() => onAccount("gcb")}><ArrowUpRight size={21}/></button>
+          </div>
+          <div className="savings-brand"><Bank size={18}/><span>{names.gcb}</span></div>
+          <h2>{cash(vault.savingsBalance)}</h2>
+          <div className="savings-metrics">
+            <div><span>This payday</span><strong>{cash(p.savings)}<ArrowUpRight size={15}/></strong></div>
+            <div><span>Owed to yourself</span><strong>{vault.debt?cash(vault.debt):"All clear"}{!vault.debt&&<Check size={15}/>}</strong></div>
+          </div>
+        </article>
+        <article className="firstbank-total-card">
           <div className="savings-top">
             <span>
               <Heart size={14} />
@@ -357,17 +370,12 @@ export default function Dashboard({
               <ArrowUpRight size={21} />
             </button>
           </div>
-          <div className="savings-brand">
-            <Heart size={18} />
-            <span>{names.first}</span>
-          </div>
+          <div className="firstbank-total-label"><Heart size={17}/><span>{names.first}</span></div>
           <h2>{cash(firstBankAllocatedToDate(vault))}</h2>
           <p>Total allocated across saved paydays</p>
           {vault.history.some(h=>!h.accountSplit && h.planId !== p.id) && <small className="legacy-history-note">Earlier paydays don’t have recorded account splits.</small>}
-          <button className="savings-goals-link" type="button" onClick={onFirstBank}>
-            <span>View {names.first} breakdown <ArrowRight size={14}/></span>
-          </button>
         </article>
+        </div>
       </section>
       {showAccounts && (
         <>
