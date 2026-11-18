@@ -63,6 +63,8 @@ import {
   type Vault,
 } from "./model";
 type View = "overview" | "accounts" | "wishlist" | "history" | "copilot" | "settings";
+type ToastPhase = "entering" | "expanded" | "reopening" | "leaving";
+type ToastData = { id: number; text: string; error?: boolean };
 type Modal =
   | "payday"
   | "borrow"
@@ -293,9 +295,7 @@ export default function App() {
     [hasKey, setHasKey] = useState(false),
     [view, setView] = useState<View>("overview"),
     [modal, setModal] = useState<Modal>(null),
-    [toast, setToast] = useState<{ text: string; error?: boolean } | null>(
-      null,
-    ),
+    [toast, setToast] = useState<ToastData | null>(null),
     [saving, setSaving] = useState(false),
     [busy, setBusy] = useState(false),
     [preparingBudget, setPreparingBudget] = useState(false),
@@ -309,6 +309,8 @@ export default function App() {
     [newCost, setNewCost] = useState(0),
     [showArchive, setShowArchive] = useState(false);
   const [settingsTab,setSettingsTab]=useState("accounts");
+  const [toastPhase, setToastPhase] = useState<ToastPhase>("entering");
+  const [toastRevision, setToastRevision] = useState(0);
   const [expandedHistory,setExpandedHistory]=useState<Record<string,boolean>>({});
   const display=useMemo(()=>currencyPresentation(vault.displayCurrency ?? "GHS",vault.exchangeRates),[vault.displayCurrency,vault.exchangeRates]);
   const cash=display.cash;
@@ -348,6 +350,17 @@ export default function App() {
   }, [busy]);
   const [proposedPlan, setProposedPlan] = useState<Plan | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
+  const toastSequence = useRef(0);
+  const toastRef = useRef<ToastData | null>(null);
+  const toastPhaseRef = useRef<ToastPhase>("entering");
+  const toastDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (toastDismissTimer.current) clearTimeout(toastDismissTimer.current);
+  }, []);
+  const moveToast = (phase: ToastPhase) => {
+    toastPhaseRef.current = phase;
+    setToastPhase(phase);
+  };
   useEffect(() => { chatEnd.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [conversation, busy, view]);
   function openSettings(tab = hasUpdate ? "updates" : "accounts") { setSettingsTab(tab); setModal(null); setView("settings"); }
   const [tourIndex,setTourIndex]=useState<number|null>(null);
@@ -374,14 +387,74 @@ export default function App() {
   }, []);
   useEffect(() => {
     if (!toast) return;
-    const id = setTimeout(() => setToast(null), 6000);
-    return () => clearTimeout(id);
-  }, [toast]);
-  const notify = (text: string, error = false) =>
-    setToast({
-      text: text.replace(/^Error invoking remote method [\s\S]*?: Error: /, ""),
-      error,
-    });
+    const id = toast.id;
+    const timer = setTimeout(() => {
+      if (toastRef.current?.id === id && toastPhaseRef.current === "entering") {
+        moveToast("expanded");
+      }
+    }, 780);
+    return () => clearTimeout(timer);
+  }, [toast?.id]);
+  useEffect(() => {
+    if (!toast || toastPhase !== "reopening") return;
+    const id = toast.id;
+    const timer = setTimeout(() => {
+      if (toastRef.current?.id === id && toastPhaseRef.current === "reopening") {
+        moveToast("expanded");
+      }
+    }, 780);
+    return () => clearTimeout(timer);
+  }, [toast?.id, toastPhase]);
+  useEffect(() => {
+    if (!toast) return;
+    const id = toast.id;
+    const leaveTimer = setTimeout(() => {
+      if (toastRef.current?.id === id) moveToast("leaving");
+    }, 5300);
+    const removeTimer = setTimeout(() => {
+      if (toastRef.current?.id !== id) return;
+      toastRef.current = null;
+      setToast(null);
+      moveToast("entering");
+    }, 6300);
+    return () => {
+      clearTimeout(leaveTimer);
+      clearTimeout(removeTimer);
+    };
+  }, [toast?.id, toastRevision]);
+  const notify = (text: string, error = false) => {
+    const message = text.replace(/^Error invoking remote method [\s\S]*?: Error: /, "");
+    const current = toastRef.current;
+    if (current) {
+      if (toastDismissTimer.current) {
+        clearTimeout(toastDismissTimer.current);
+        toastDismissTimer.current = null;
+      }
+      const updated = { ...current, text: message, error };
+      toastRef.current = updated;
+      setToast(updated);
+      if (toastPhaseRef.current === "leaving") moveToast("reopening");
+    } else {
+      const next = { id: ++toastSequence.current, text: message, error };
+      toastRef.current = next;
+      moveToast("entering");
+      setToast(next);
+    }
+    setToastRevision((revision) => revision + 1);
+  };
+  const dismissToast = () => {
+    const id = toastRef.current?.id;
+    if (id === undefined) return;
+    moveToast("leaving");
+    if (toastDismissTimer.current) clearTimeout(toastDismissTimer.current);
+    toastDismissTimer.current = setTimeout(() => {
+      toastDismissTimer.current = null;
+      if (toastRef.current?.id !== id || toastPhaseRef.current !== "leaving") return;
+      toastRef.current = null;
+      setToast(null);
+      moveToast("entering");
+    }, 1000);
+  };
   async function persist(next: Vault) {
     setSaving(true);
     const task = saveQueue.current.then(() => storage.save(next));
@@ -1281,14 +1354,16 @@ export default function App() {
       </nav>
       {toast && (
         <div
+          key={toast.id}
+          data-toast-id={toast.id}
           role={toast.error ? "alert" : "status"}
-          className={`toast tinted ${toast.error ? "red" : "green"}`}
+          className={`toast tinted ${toast.error ? "red" : "green"} toast-${toastPhase}`}
         >
-          {toast.error ? <Bell size={19} /> : <CircleCheck size={19} />}
-          <span>{toast.text}</span>
+          <img className="toast-app-icon" src="./icon.png" alt="" aria-hidden="true" />
+          <span className="toast-message">{toast.text}</span>
           <button
             aria-label="Dismiss notification"
-            onClick={() => setToast(null)}
+            onClick={dismissToast}
           >
             <X size={16} />
           </button>

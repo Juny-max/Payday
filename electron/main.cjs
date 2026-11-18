@@ -12,8 +12,16 @@ const path = require("node:path");
 const { z } = require("zod");
 let win,
   writeQueue = Promise.resolve();
-if(process.platform === "win32") app.setAppUserModelId("com.payday.desktop");
 const dev = process.argv.includes("--dev") && !app.isPackaged;
+if (dev) {
+  app.setName("Payday Development");
+  app.setPath(
+    "userData",
+    path.join(app.getPath("appData"), "Payday Development"),
+  );
+}
+if (process.platform === "win32")
+  app.setAppUserModelId(dev ? "com.payday.desktop.dev" : "com.payday.desktop");
 const file = (name) => path.join(app.getPath("userData"), name);
 async function read(name) {
   try {
@@ -214,7 +222,7 @@ if (!app.requestSingleInstanceLock()) {
         minWidth: 1000,
         minHeight: 740,
         backgroundColor: "#F8FAFC",
-        title: "Payday",
+        title: dev ? "Payday Development" : "Payday",
         autoHideMenuBar: true,
         icon: path.join(__dirname, "../public", process.platform === "win32" ? "icon.ico" : "icon.png"),
         webPreferences: {

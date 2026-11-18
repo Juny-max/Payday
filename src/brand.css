@@ -52,7 +52,7 @@ body {background:#f8fafc;}
 /* A guided, non-destructive first-use tour. */
 .tour-layer {position:fixed;inset:0;z-index:10000;}
 .tour-spotlight {position:fixed;border:2px solid #93c5fd;border-radius:20px;box-shadow:0 0 0 9999px #0f172a80,0 0 0 5px #2563eb20;pointer-events:none;}
-.tour-popover {position:fixed;width:min(380px,calc(100vw - 32px));padding:23px;background:#fff;border:1px solid #dbeafe;border-radius:22px;box-shadow:0 16px 70px #0f172a26;max-height:calc(100dvh - 32px);overflow:auto;}
+.tour-popover {position:fixed;z-index:1;width:min(380px,calc(100vw - 32px));padding:23px;background:#fff;border:1px solid #dbeafe;border-radius:22px;box-shadow:0 16px 70px #0f172a26;max-height:calc(100dvh - 32px);overflow:auto;transition:left 160ms ease,top 160ms ease,width 160ms ease;}
 .tour-meta {display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;color:#2563eb;font-size:10px;font-weight:800;letter-spacing:1.2px;}
 #root .tour-popover h2 {font-size:20px;line-height:1.4;letter-spacing:-.5px;margin:0 0 12px;}
 .tour-popover > p {font-size:13px;line-height:1.85;color:#64748b;margin:0;}
