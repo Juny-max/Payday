@@ -62,6 +62,13 @@ export const exchangeRatesSchema = z.object({
   source: z.enum(["Frankfurter", "Manual"]),
 });
 export type ExchangeRates = z.infer<typeof exchangeRatesSchema>;
+export const memoryNoteSchema = z.object({
+  id: z.string().uuid(),
+  summary: z.string().trim().min(1).max(600),
+  createdAt: z.string().datetime(),
+});
+export type MemoryNote = z.infer<typeof memoryNoteSchema>;
+export const memoryUpdateSchema = z.string().trim().min(4).max(600);
 export function displayAmount(n: number, currency: Currency, rates?: ExchangeRates) {
   if(currency === "GHS") return n;
   if(!rates) throw new Error("Save an exchange rate before selecting USD or GBP.");
@@ -73,6 +80,8 @@ export const stateSchema = z.object({
   displayCurrency: currencySchema.optional(),
   exchangeRates: exchangeRatesSchema.optional(),
   accountNames: accountNamesSchema.optional(),
+  memoryEnabled: z.boolean().default(true),
+  memory: z.array(memoryNoteSchema).max(250).default([]),
   version: z.literal(1),
   plan: planSchema,
   savingsBalance: amount,
@@ -364,6 +373,8 @@ export const initialVault = (): Vault => ({
   savingsBalance: 0,
   debt: 0,
   emergencyCash: 0,
+  memoryEnabled: true,
+  memory: [],
   history: [],
   activity: [],
 });

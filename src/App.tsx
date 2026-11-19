@@ -28,6 +28,8 @@ import {
   Money as Banknote,
   Archive,
   CalendarBlank,
+  Microphone,
+  Stop,
 } from "@phosphor-icons/react";
 import GuidedTour,{tourSteps} from "./Tour";
 import {CurrencyProvider,CurrencySettings,currencyPresentation,useCurrency} from "./Currency";
@@ -57,6 +59,7 @@ import {
   money,
   remaining,
   stateSchema,
+  memoryNoteSchema,
   transport,
   validatePlan,
   type Plan,
@@ -64,7 +67,7 @@ import {
 } from "./model";
 type View = "overview" | "accounts" | "wishlist" | "history" | "copilot" | "settings";
 type ToastPhase = "entering" | "expanded" | "reopening" | "leaving";
-type ToastData = { id: number; text: string; error?: boolean };
+type ToastData = { id: number; text: string; error?: boolean; action?: { label: string; run: () => void } };
 type Modal =
   | "payday"
   | "borrow"
@@ -77,6 +80,14 @@ const dateLabel = (month: string) =>
     month: "long",
     year: "numeric",
   });
+function HistoryPager({ page, pages, onChange, label }: { page: number; pages: number; onChange: (page: number) => void; label: string }) {
+  if (pages <= 1) return null;
+  return <nav className="history-pager" aria-label={`${label} pages`}>
+    <button type="button" onClick={() => onChange(page - 1)} disabled={page <= 0}>Previous</button>
+    <span>Page {page + 1} of {pages}</span>
+    <button type="button" onClick={() => onChange(page + 1)} disabled={page + 1 >= pages}>Next</button>
+  </nav>;
+}
 function Field({
   label,
   value,
@@ -302,6 +313,14 @@ export default function App() {
     [waitingLong, setWaitingLong] = useState(false),
     [prompt, setPrompt] = useState(""),
     [conversation, setConversation] = useState<{ role: string; text: string }[]>([]),
+    [memoryOpen, setMemoryOpen] = useState(false),
+    [memoryEditId, setMemoryEditId] = useState<string | null>(null),
+    [memoryEditText, setMemoryEditText] = useState(""),
+    [confirmClearMemory, setConfirmClearMemory] = useState(false),
+    [recording, setRecording] = useState(false),
+    [transcribingVoice, setTranscribingVoice] = useState(false),
+    [historyPage, setHistoryPage] = useState(0),
+    [activityPage, setActivityPage] = useState(0),
     [apiKey, setApiKey] = useState(""),
     [borrowAmount, setBorrowAmount] = useState(0),
     [draft, setDraft] = useState<Plan>(vault.plan),
@@ -338,6 +357,11 @@ export default function App() {
   }
   const [aiInDraft, setAiInDraft] = useState(false);
   function openCopilot(fromDraft = false) {
+    setConversation([]);
+    setPrompt("");
+    setProposedPlan(null);
+    setMemoryOpen(false);
+    setMemoryEditId(null);
     setAiInDraft(fromDraft);
     setModal(null);
     setView("copilot");
@@ -350,12 +374,19 @@ export default function App() {
   }, [busy]);
   const [proposedPlan, setProposedPlan] = useState<Plan | null>(null);
   const chatEnd = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunks = useRef<Blob[]>([]);
+  const transcriptionRequested = useRef(false);
+  const recordingLimit = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastSequence = useRef(0);
   const toastRef = useRef<ToastData | null>(null);
   const toastPhaseRef = useRef<ToastPhase>("entering");
   const toastDismissTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => () => {
     if (toastDismissTimer.current) clearTimeout(toastDismissTimer.current);
+    if (recordingLimit.current) clearTimeout(recordingLimit.current);
+    if (mediaRecorderRef.current?.state === "recording") mediaRecorderRef.current.stop();
   }, []);
   const moveToast = (phase: ToastPhase) => {
     toastPhaseRef.current = phase;
@@ -422,7 +453,7 @@ export default function App() {
       clearTimeout(removeTimer);
     };
   }, [toast?.id, toastRevision]);
-  const notify = (text: string, error = false) => {
+  const notify = (text: string, error = false, action?: ToastData["action"]) => {
     const message = text.replace(/^Error invoking remote method [\s\S]*?: Error: /, "");
     const current = toastRef.current;
     if (current) {
@@ -430,12 +461,12 @@ export default function App() {
         clearTimeout(toastDismissTimer.current);
         toastDismissTimer.current = null;
       }
-      const updated = { ...current, text: message, error };
+      const updated = { ...current, text: message, error, action };
       toastRef.current = updated;
       setToast(updated);
       if (toastPhaseRef.current === "leaving") moveToast("reopening");
     } else {
-      const next = { id: ++toastSequence.current, text: message, error };
+      const next = { id: ++toastSequence.current, text: message, error, action };
       toastRef.current = next;
       moveToast("entering");
       setToast(next);
@@ -477,6 +508,13 @@ export default function App() {
   const accountEnabled = vault.accountEnabled ?? defaultAccountEnabled;
   const active = p.wishes.filter((w) => !w.bought),
     archived = p.wishes.filter((w) => w.bought);
+  const historyPageSize = 12;
+  const historyPages = Math.max(1, Math.ceil(vault.history.length / historyPageSize));
+  const activityPages = Math.max(1, Math.ceil(vault.activity.length / historyPageSize));
+  const currentHistoryPage = Math.min(historyPage, historyPages - 1);
+  const currentActivityPage = Math.min(activityPage, activityPages - 1);
+  const visibleHistory = vault.history.slice(currentHistoryPage * historyPageSize, (currentHistoryPage + 1) * historyPageSize);
+  const visibleActivity = vault.activity.slice(currentActivityPage * historyPageSize, (currentActivityPage + 1) * historyPageSize);
   function openPayday() {
     setDraft(
       committed ? structuredClone(p) : balancePlan(p, accountEnabled),
@@ -542,10 +580,113 @@ export default function App() {
     setDraft(balancePlan({...nextPaydayPlan(p),accountEnabled},accountEnabled));
     setModal("payday");
   }
+  async function undoMemory(ids: string[]) {
+    const current = latestVault.current;
+    const next = { ...current, memory: (current.memory ?? []).filter((note) => !ids.includes(note.id)) };
+    if (await persist(next)) notify("Memory update undone.");
+  }
+  async function saveMemoryUpdates(updates?: string[]) {
+    const current = latestVault.current;
+    if (!current.memoryEnabled || !updates?.length) return;
+    const notes = [...(current.memory ?? [])];
+    const added: string[] = [];
+    for (const value of updates.slice(0, 3)) {
+      const summary = String(value).trim().replace(/\s+/g, " ").slice(0, 600);
+      if (summary.length < 4 || notes.some((note) => note.summary.toLocaleLowerCase() === summary.toLocaleLowerCase())) continue;
+      const note = memoryNoteSchema.parse({ id: crypto.randomUUID(), summary, createdAt: new Date().toISOString() });
+      notes.unshift(note);
+      added.push(note.id);
+    }
+    if (!added.length) return;
+    const next = { ...current, memory: notes.slice(0, 250) };
+    if (await persist(next)) notify("Payday Memory updated on this device.", false, { label: "Undo", run: () => { void undoMemory(added); } });
+  }
+  async function setMemoryEnabled(enabled: boolean) {
+    if (await persist({ ...latestVault.current, memoryEnabled: enabled }))
+      notify(enabled ? "Payday Memory enabled. Meaningful updates can be saved locally." : "Payday Memory paused. Saved notes remain on this device.");
+  }
+  async function updateMemoryNote(id: string, summary: string) {
+    const current = latestVault.current;
+    const clean = summary.trim().replace(/\s+/g, " ");
+    if (!clean) { notify("A memory note cannot be empty.", true); return; }
+    const next = { ...current, memory: current.memory.map((note) => note.id === id ? memoryNoteSchema.parse({ ...note, summary: clean }) : note) };
+    if (await persist(next)) { setMemoryEditId(null); notify("Memory note updated on this device."); }
+  }
+  async function deleteMemoryNote(id: string) {
+    const note = latestVault.current.memory.find((item) => item.id === id);
+    if (!note) return;
+    if (await persist({ ...latestVault.current, memory: latestVault.current.memory.filter((item) => item.id !== id) }))
+      notify("Memory note removed.", false, { label: "Undo", run: () => { void restoreMemoryNote(note); } });
+  }
+  async function restoreMemoryNote(note: Vault["memory"][number]) {
+    const current = latestVault.current;
+    if (current.memory.some((item) => item.id === note.id)) return;
+    if (await persist({ ...current, memory: [note, ...current.memory].slice(0, 250) })) notify("Memory note restored.");
+  }
+  async function clearMemory() {
+    if (await persist({ ...latestVault.current, memory: [] })) {
+      setConfirmClearMemory(false);
+      notify("Payday Memory cleared from this device.");
+    }
+  }
+  async function toggleRecording() {
+    const activeRecorder = mediaRecorderRef.current;
+    if (activeRecorder?.state === "recording") { transcriptionRequested.current = true; activeRecorder.stop(); return; }
+    if (!hasKey) { openSettings("gemini"); notify("Connect Gemini before using voice transcription.", true); return; }
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      notify("Voice recording is not available on this device.", true);
+      return;
+    }
+    let stream: MediaStream | undefined;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+      const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4"].find((type) => MediaRecorder.isTypeSupported(type));
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      mediaRecorderRef.current = recorder;
+      recordedChunks.current = [];
+      transcriptionRequested.current = false;
+      recorder.ondataavailable = (event) => { if (event.data.size) recordedChunks.current.push(event.data); };
+      recorder.onerror = () => {
+        transcriptionRequested.current = false;
+        stream?.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        notify("The recording stopped unexpectedly. Try again.", true);
+      };
+      recorder.onstop = async () => {
+        const shouldTranscribe = transcriptionRequested.current;
+        transcriptionRequested.current = false;
+        stream?.getTracks().forEach((track) => track.stop());
+        setRecording(false);
+        if (recordingLimit.current) clearTimeout(recordingLimit.current);
+        recordingLimit.current = null;
+        const blob = new Blob(recordedChunks.current, { type: recorder.mimeType || "audio/webm" });
+        recordedChunks.current = [];
+        if (!shouldTranscribe) return;
+        if (!blob.size) { notify("No speech was captured. Try recording again.", true); return; }
+        setTranscribingVoice(true);
+        try {
+          const transcript = await storage.transcribe(new Uint8Array(await blob.arrayBuffer()), blob.type || "audio/webm");
+          setPrompt((existing) => existing.trim() ? `${existing.trimEnd()}\n${transcript}` : transcript);
+          requestAnimationFrame(() => composerRef.current?.focus());
+          notify("Transcript added. Review it before sending.");
+        } catch (error) { notify((error as Error).message, true); }
+        finally { setTranscribingVoice(false); }
+      };
+      recorder.start(250);
+      setRecording(true);
+      recordingLimit.current = setTimeout(() => {
+        if (recorder.state === "recording") { transcriptionRequested.current = true; notify("Recording reached 60 seconds and is transcribing."); recorder.stop(); }
+      }, 60000);
+    } catch (error) {
+      stream?.getTracks().forEach((track) => track.stop());
+      setRecording(false);
+      notify((error as Error).name === "NotAllowedError" ? "Microphone access was not allowed. Enable it in Windows privacy settings and try again." : `Could not start the microphone: ${(error as Error).message}`, true);
+    }
+  }
   async function runAI() {
     const baseline = JSON.stringify(vault);
     const draftBaseline = JSON.stringify(draft);
-    if (!prompt.trim() || busy) return;
+    if (!prompt.trim() || busy || recording || transcribingVoice) return;
     const text = prompt.trim();
     setConversation(previous => [...previous, { role: "You", text }]);
     setPrompt("");
@@ -553,16 +694,19 @@ export default function App() {
     setPreparingBudget(aiInDraft || /budget|allocat|plan|salary|paid|payday|split|cedis|spend|transport|fare|saving|food|balance|money/i.test(text));
     setBusy(true);
     try {
-      const plan = await storage.ai(
+      const result = await storage.ai(
         [...conversation.slice(-8), { role: "user", text }].map(m => `${m.role}: ${m.text}`).join("\n").slice(-6000),
         aiInDraft ? draft : p,
+        text,
       );
       setKeyVerified(true);
-      if ("reply" in plan) {
-        setConversation(previous => [...previous, { role: "Co-pilot", text: plan.reply }]);
+      if ("reply" in result) {
+        setConversation(previous => [...previous, { role: "Co-pilot", text: result.reply }]);
         setPrompt("");
+        await saveMemoryUpdates(result.memoryUpdates);
         return;
       }
+      const { memoryUpdates, ...plan } = result;
       setConversation(previous => [...previous, { role: "Co-pilot", text: plan.explanation }]);
       setPrompt("");
       if (
@@ -573,6 +717,7 @@ export default function App() {
           "Your plan changed while Gemini was thinking. Try again with your updated plan.",
           true,
         );
+        await saveMemoryUpdates(memoryUpdates);
         return;
       }
       validatePlan(plan);
@@ -580,6 +725,7 @@ export default function App() {
       setKeyTestError("");
       setProposedPlan(plan);
       notify("Your proposed budget is ready to review.");
+      await saveMemoryUpdates(memoryUpdates);
     } catch (e) {
       setConversation(previous => [...previous, { role: "Co-pilot", text: "I could not send that request. Your budget is unchanged. Please try again." }]);
       setPrompt(text);
@@ -640,7 +786,7 @@ export default function App() {
       <div className="ambient one" />
       <div className="ambient two" />
       <div className="ambient three" />
-      <header className="topbar">
+      <header className={`topbar ${view === "copilot" ? "topbar-copilot" : ""}`}>
         <div className="workspace-greeting">
           <span className="greeting-avatar">
             <Wallet size={19} />
@@ -978,7 +1124,7 @@ export default function App() {
                 <h2>Payday history</h2>
                 <span className="soft-tag">{vault.history.length} paydays</span>
               </div>
-              {vault.history.map((h) => {
+              {visibleHistory.map((h) => {
                 const key=h.planId ?? `${h.month}-${h.date}`;
                 return <article className="history-record" key={key}>
                   <button type="button" className="history-row history-trigger" aria-expanded={Boolean(expandedHistory[key])} onClick={()=>setExpandedHistory(current=>({...current,[key]:!current[key]}))}>
@@ -1007,10 +1153,11 @@ export default function App() {
                   </button>
                 </div>
               )}
+              <HistoryPager page={currentHistoryPage} pages={historyPages} onChange={setHistoryPage} label="Payday history" />
             </div>
             <div className="glass history-panel">
-              <h2>The meaningful moments</h2>
-              {vault.activity.slice(0, 30).map((a) => (
+              <div className="section-heading"><h2>The meaningful moments</h2><span className="soft-tag">{vault.activity.length} records</span></div>
+              {visibleActivity.map((a) => (
                 <div className="activity-row" key={a.id}>
                   <span className={`activity-dot ${a.kind}`} />
                   <div>
@@ -1031,16 +1178,31 @@ export default function App() {
                   here.
                 </p>
               )}
+              <HistoryPager page={currentActivityPage} pages={activityPages} onChange={setActivityPage} label="Meaningful moments" />
             </div>
           </section>
         )}
         {view === "copilot" && (
-          <section className="chat-page" aria-label="Payday co-pilot chat">
+          <section className={`chat-page ${memoryOpen ? "memory-open" : ""}`} aria-label="Payday co-pilot chat">
             <header className="chat-header">
               <div className="chat-avatar"><Sparkles size={25} /></div>
-              <div><h1>Payday co-pilot</h1><p>{busy ? (preparingBudget ? "Preparing your budget..." : waitingLong ? "Thinking..." : "Typing...") : hasKey ? "Here to help you plan" : "Connect Gemini in Settings to chat"}</p></div>
-              <span className="soft-tag">{dateLabel((aiInDraft ? draft : p).month)}{aiInDraft ? " draft" : " budget"}</span>
+              <div><h1>Payday co-pilot</h1><p>{recording ? "Listening… tap stop when you’re done" : transcribingVoice ? "Transcribing your voice…" : busy ? (preparingBudget ? "Preparing your budget..." : waitingLong ? "Thinking..." : "Typing...") : hasKey ? "Here to help you plan" : "Connect Gemini in Settings to chat"}</p></div>
+              <div className="memory-drawer">
+                <button type="button" className="memory-toggle" aria-expanded={memoryOpen} aria-controls="payday-memory-panel" onClick={() => setMemoryOpen((open) => !open)}>
+                  <Archive size={17}/><span>Payday Memory</span><small>{vault.memory.length} {vault.memory.length === 1 ? "note" : "notes"}</small><ChevronDown size={16}/>
+                </button>
+                {memoryOpen && <section id="payday-memory-panel" className="memory-panel" aria-label="Payday Memory">
+                  <div className="memory-panel-heading">
+                    <label className="memory-switch" title="Toggle Payday Memory"><input type="checkbox" aria-label="Enable Payday Memory" checked={vault.memoryEnabled} disabled={saving} onChange={(event) => void setMemoryEnabled(event.currentTarget.checked)}/><span className="memory-switch-track" aria-hidden="true" /></label>
+                  </div>
+                  {vault.memory.length ? <div className="memory-note-list">{vault.memory.map((note) => <article className="memory-note" key={note.id}>
+                    {memoryEditId === note.id ? <><textarea aria-label="Edit memory note" maxLength={600} value={memoryEditText} onChange={(event) => setMemoryEditText(event.currentTarget.value)}/><div className="memory-note-actions"><button type="button" className="primary" onClick={() => void updateMemoryNote(note.id, memoryEditText)}>Save note</button><button type="button" onClick={() => setMemoryEditId(null)}>Cancel</button></div></> : <><p>{note.summary}</p><small>{new Date(note.createdAt).toLocaleDateString("en-GH", { day: "numeric", month: "short", year: "numeric" })}</small><div className="memory-note-actions"><button type="button" onClick={() => {setMemoryEditId(note.id);setMemoryEditText(note.summary);}}>Edit</button><button type="button" onClick={() => void deleteMemoryNote(note.id)}>Remove</button></div></>}
+                  </article>)}</div> : <p className="memory-empty">No notes yet.</p>}
+                  {vault.memory.length > 0 && <div className="memory-panel-footer">{confirmClearMemory ? <><span>Remove all saved notes?</span><button type="button" onClick={() => void clearMemory()}>Clear memory</button><button type="button" onClick={() => setConfirmClearMemory(false)}>Cancel</button></> : <button type="button" onClick={() => setConfirmClearMemory(true)}>Clear memory</button>}</div>}
+                </section>}
+              </div>
             </header>
+            {memoryOpen && <button type="button" className="memory-scrim" aria-label="Close Payday Memory" onClick={() => setMemoryOpen(false)} />}
             <div className="chat-messages" role="log" aria-live="polite" aria-label="Conversation">
               <div className="chat-bubble assistant"><p>Hi! Ask about your saved budget, talk through an expense, or tell me what you need this payday.</p></div>
               {conversation.map((message, index) => <div key={index} className={`chat-bubble ${message.role === "You" ? "user" : "assistant"}`}><small>{message.role}</small><p>{message.text}</p></div>)}
@@ -1055,8 +1217,8 @@ export default function App() {
               <div ref={chatEnd} />
             </div>
             <form className="chat-composer" onSubmit={e => { e.preventDefault(); if(hasKey) void runAI(); else openSettings("gemini"); }}>
-              <p className="chat-context"><LockKeyhole size={13}/> When you send: your message, recent chat, selected budget, savings balance and self-debt go to Gemini. No bank login or API key is included in the chat.</p>
-              <div className="chat-input-row"><textarea aria-label="Tell your payday co-pilot about your month" value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={6000} placeholder="Message your co-pilot..." rows={2} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if(!busy && prompt.trim()) { if(hasKey) void runAI(); else openSettings("gemini"); } } }}/><button type="submit" className="primary" disabled={busy || saving || (hasKey && !prompt.trim())} aria-label={hasKey ? "Send message" : "Connect Gemini"}>{busy ? <LoaderCircle className="spin" size={20}/> : <ArrowUpRight size={22}/>}<span>{hasKey ? "Send" : "Connect Gemini"}</span></button></div>
+              <p className="chat-context"><LockKeyhole size={13}/> Gemini receives your message, recent messages in this open chat, the selected budget, relevant saved balance details, and relevant Payday Memory notes. Messages are not kept as history. When you stop a voice recording, its audio is sent to Gemini and the transcript appears here for review before you send it.</p>
+              <div className="chat-input-row"><textarea ref={composerRef} aria-label="Tell your payday co-pilot about your month" value={prompt} onChange={e => setPrompt(e.target.value)} maxLength={6000} disabled={busy || recording || transcribingVoice} placeholder="Message your co-pilot..." rows={2} onKeyDown={e => { if(e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); if(!busy && !recording && !transcribingVoice && prompt.trim()) { if(hasKey) void runAI(); else openSettings("gemini"); } } }}/><button type="button" className={`chat-mic ${recording ? "is-recording" : ""}`} onClick={() => void toggleRecording()} disabled={busy || saving || transcribingVoice} aria-label={recording ? "Stop voice recording" : transcribingVoice ? "Transcribing voice" : "Record voice message"} title={recording ? "Stop recording" : "Voice message is sent to Gemini for transcription"}>{recording ? <Stop size={20}/> : transcribingVoice ? <LoaderCircle className="spin" size={20}/> : <Microphone size={20}/>}<span>{recording ? "Stop" : transcribingVoice ? "Transcribing" : "Voice"}</span></button><button type="submit" className="primary" disabled={busy || saving || recording || transcribingVoice || (hasKey && !prompt.trim())} aria-label={hasKey ? "Send message" : "Connect Gemini"}>{busy ? <LoaderCircle className="spin" size={20}/> : <ArrowUpRight size={22}/>}<span>{hasKey ? "Send" : "Connect Gemini"}</span></button></div>
             </form>
           </section>
         )}
@@ -1064,7 +1226,7 @@ export default function App() {
           <div className="settings-page">
             <header className="settings-page-heading">
               <div><span className="settings-eyebrow">MAKE IT YOURS</span><h1>Settings</h1><p>Your accounts, your assistant, and your data.</p></div>
-              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.6.1"}</span>
+              <span className="settings-version">Payday {updateState?.currentVersion ?? "1.6.11"}</span>
             </header>
             <nav className="settings-links" aria-label="Settings sections" role="tablist">
               {[{id:"accounts",name:"Accounts",Icon:Wallet},{id:"currency",name:"Currency",Icon:Banknote},{id:"gemini",name:"AI co-pilot",Icon:Sparkles},{id:"backup",name:"Backups & storage",Icon:ShieldCheck},{id:"updates",name:"Updates",Icon:Download},{id:"reset",name:"Reset & uninstall",Icon:RefreshCw}].map(({id,name,Icon},index)=><button key={id} type="button" id={`settings-tab-${id}`} role="tab" aria-selected={settingsTab===id} aria-controls={`settings-panel-${id}`} tabIndex={settingsTab===id?0:-1} onClick={()=>setSettingsTab(id)} onKeyDown={event=>{const tabs=["accounts","currency","gemini","backup","updates","reset"];let next=index;if(event.key==="ArrowRight")next=(index+1)%tabs.length;else if(event.key==="ArrowLeft")next=(index+tabs.length-1)%tabs.length;else if(event.key==="Home")next=0;else if(event.key==="End")next=tabs.length-1;else return;event.preventDefault();setSettingsTab(tabs[next]);document.getElementById(`settings-tab-${tabs[next]}`)?.focus();}}><Icon size={16}/>{name}{id === "updates" && hasUpdate && <i className="settings-update-dot" aria-hidden="true"/>}</button>)}
@@ -1361,6 +1523,7 @@ export default function App() {
         >
           <img className="toast-app-icon" src="./icon.png" alt="" aria-hidden="true" />
           <span className="toast-message">{toast.text}</span>
+          {toast.action && <button className="toast-action" type="button" onClick={() => { const run = toast.action?.run; dismissToast(); run?.(); }}>{toast.action.label}</button>}
           <button
             aria-label="Dismiss notification"
             onClick={dismissToast}
@@ -1387,8 +1550,8 @@ export default function App() {
           <div className="reset-warning">
             <strong>This will clear:</strong>
             <p>
-              Payday history, balances, self-debt, wishlist items, account names
-              and your saved Gemini API key.
+              Payday history, balances, self-debt, wishlist items, Payday Memory,
+              account names and your saved Gemini API key.
             </p>
             <p>
               Only Payday data is affected. Export an encrypted backup first if
@@ -1433,6 +1596,8 @@ export default function App() {
                   setApiKey("");
                   setPrompt("");
                   setConversation([]);
+                  setMemoryOpen(false);
+                  setMemoryEditId(null);
                   setBorrowAmount(0);
                   setNewName("");
                   setNewCost(0);

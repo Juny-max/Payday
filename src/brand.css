@@ -67,3 +67,17 @@ body {background:#f8fafc;}
 #root .balance-circle {border-color:#2563eb;}
 #root .allocation-hover-detail {background:#f8fafc;border-color:#e2e8f0;color:#64748b;}
 #root .soft-tag {background:#eff6ff;border-color:#dbeafe;color:#1e40af;}
+/* The co-pilot has no global top bar, so its workspace uses the full webview. */
+#root main.chat-main {height:100dvh;min-height:0;box-sizing:border-box;}
+#root .chat-header {position:relative;z-index:20;}
+#root .chat-header .memory-drawer {position:static;margin-left:auto;width:auto;max-height:none;overflow:visible;padding:0;border:0;background:transparent;box-shadow:none;}
+#root .chat-header .memory-drawer:has(.memory-panel) {width:auto;}
+#root .chat-header .memory-toggle {width:auto;min-height:46px;padding:0 13px;border:1px solid #dbeafe;border-radius:15px;background:#fff;box-shadow:0 8px 20px #18325b0c,inset 0 1px 2px #fff;}
+#root .chat-header .memory-panel {position:absolute;top:calc(100% + 8px);right:30px;z-index:21;width:min(390px,calc(100% - 40px));max-height:min(48vh,420px);overflow:auto;padding:14px;border:1px solid #dce7f8;border-radius:16px;background:#fffffffa;box-shadow:0 16px 42px #18325b24,inset 0 1px 2px #fff;}
+#root .chat-header .memory-panel-heading {margin:0 0 8px;padding:0;border:0;background:transparent;}
+#root .memory-scrim {inset:0;z-index:8;}
+@media(max-width:700px) {
+  #root .chat-header {gap:10px;padding-right:16px;padding-left:16px;}
+  #root .chat-header .memory-toggle small {display:none;}
+  #root .chat-header .memory-panel {right:16px;width:min(360px,calc(100% - 32px));}
+}

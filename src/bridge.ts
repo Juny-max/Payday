@@ -1,4 +1,5 @@
 import { initialVault, stateSchema, type Vault, type Plan, type ExchangeRates } from "./model";
+export type CopilotResponse = (Plan & { memoryUpdates?: string[] }) | { reply: string; memoryUpdates?: string[] };
 export type UpdateState = {status: "idle"|"unavailable"|"checking"|"available"|"current"|"downloading"|"ready"|"installing"|"error"; currentVersion:string; version:string; percent:number; message:string};
 declare global {
   interface Window {
@@ -16,7 +17,8 @@ declare global {
       save: (v: Vault) => Promise<void>;
       checkKey: () => Promise<{ model: string }>;
       setKey: (key: string) => Promise<void>;
-      ai: (prompt: string, plan: Plan) => Promise<Plan | { reply: string }>;
+      ai: (prompt: string, plan: Plan, latestUserMessage?: string) => Promise<CopilotResponse>;
+      transcribe: (audio: Uint8Array, mimeType: string) => Promise<string>;
       export: () => Promise<boolean>;
       decodeBackup: (text: string) => Promise<Vault>;
     };
@@ -57,12 +59,17 @@ export const storage = {
       throw new Error("Open the desktop app to securely save a Gemini key.");
     return window.payday.setKey(k);
   },
-  async ai(prompt: string, plan: Plan) {
+  async ai(prompt: string, plan: Plan, latestUserMessage = "") {
     if (!window.payday)
       throw new Error(
         "Gemini is available in the desktop app. Use the offline planner here.",
       );
-    return window.payday.ai(prompt, plan);
+    return window.payday.ai(prompt, plan, latestUserMessage);
+  },
+  async transcribe(audio: Uint8Array, mimeType: string) {
+    if (!window.payday)
+      throw new Error("Gemini voice transcription is available in the desktop app.");
+    return window.payday.transcribe(audio, mimeType);
   },
   async decodeBackup(text: string) {
     return window.payday

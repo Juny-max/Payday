@@ -7,6 +7,7 @@ const {
   dataCost,
   nightCost,
   validatePlan,
+  memoryUpdateSchema,
 } = require("./model.cjs");
 const MODEL = "gemini-3.5-flash";
 class BudgetError extends Error {
@@ -120,7 +121,7 @@ function parsePlanResponse(p, text) {
     throw new BudgetError(e.message);
   }
 }
-async function generatePlan({ apiKey, prompt, current, generate, conversation = false, appContext = null }) {
+async function generatePlan({ apiKey, prompt, current, generate, conversation = false, appContext = null, latestUserMessage = "" }) {
   const p = plan.parse(current);
   z.string().min(1).max(6000).parse(prompt);
   try {
@@ -131,6 +132,7 @@ async function generatePlan({ apiKey, prompt, current, generate, conversation = 
       model: MODEL,
       contents: JSON.stringify({
         request: prompt,
+        latestUserMessage: conversation ? latestUserMessage : undefined,
         currentPlan: p,
         appContext,
         calendar: {
@@ -143,13 +145,14 @@ async function generatePlan({ apiKey, prompt, current, generate, conversation = 
         httpOptions: { timeout: 90000 },
         thinkingConfig: { thinkingLevel: "LOW" },
         systemInstruction:
-          (conversation ? "You are also a conversational assistant. currentPlan and appContext are the app records supplied with this request: read them before answering. Never say you have no financial details when these contain values. Distinguish the selected payday month from the current calendar month; do not claim an older budget is this month. Explain planned allocations, not an actual spendable bank balance, because daily spending is not tracked. appContext.displayCurrency is a VIEW preference only: original currentPlan and saved balances are ALWAYS GHS. Never reinterpret them as USD/GBP or change the base currency. If the user supplies income or expenses in another currency, explain that inputs currently use GHS and ask for the GHS amount or explicit approval of a conversion using saved dated rates; do not silently treat a dollar or pound amount as cedis. If helpful, show approximate equivalents using appContext.exchangeRates and label the rate date. appContext contains saved savings balance and internal debt; never infer missing bank balances. Questions asking how much is budgeted are replyOnly=true, not permission to change allocations. For greetings, questions, incomplete information, or discussion, set replyOnly=true and put a helpful natural reply or follow-up question in explanation. Preserve all current amounts in that case; zero salary is fine for conversation. Only set replyOnly=false when the user actually requests a budget and has provided enough information. Never turn a greeting into a budget. " : "") +
+          (conversation ? "You are also a conversational assistant. currentPlan and appContext are the app records supplied with this request: read them before answering. Never say you have no financial details when these contain values. Distinguish the selected payday month from the current calendar month; do not claim an older budget is this month. Explain planned allocations, not an actual spendable bank balance, because daily spending is not tracked. appContext.displayCurrency is a VIEW preference only: original currentPlan and saved balances are ALWAYS GHS. Never reinterpret them as USD/GBP or change the base currency. If the user supplies income or expenses in another currency, explain that inputs currently use GHS and ask for the GHS amount or explicit approval of a conversion using saved dated rates; do not silently treat a dollar or pound amount as cedis. If helpful, show approximate equivalents using appContext.exchangeRates and label the rate date. appContext contains saved savings balance and internal debt; never infer missing bank balances. Questions asking how much is budgeted are replyOnly=true, not permission to change allocations. For greetings, questions, incomplete information, or discussion, set replyOnly=true and put a helpful natural reply or follow-up question in explanation. Preserve all current amounts in that case; zero salary is fine for conversation. Only set replyOnly=false when the user actually requests a budget and has provided enough information. Never turn a greeting into a budget. Payday Memory notes, when supplied in appContext.memoryNotes, are local notes the user allowed you to use. Use them only when relevant and never imply you remember facts absent from them. If appContext.memoryEnabled is true, return memoryUpdates containing at most 3 short, factual durable notes derived ONLY from latestUserMessage. Store only when the user explicitly asks you to remember something, or clearly shares a meaningful personal change/update (such as work, employer, shift, or ongoing life situation). Do not store greetings, questions, ordinary budgeting requests, one-off purchases, inferred facts, or details from your own replies. If there is nothing meaningful, return an empty array. If memory is disabled, return an empty array. " : "") +
           "You are a Ghana payday budget planner. Never invent salary, fare or a weekly schedule the user has not provided. Interpret the user's personal situation and explicit requests, not a generic canned budget. Weekly schedules must be returned as workWeek weekday indices (Sunday=0, Monday=1 through Saturday=6). Five workdays means Monday-Friday; three means Monday-Wednesday unless specified otherwise. The selected calendar month stays currentPlan.month, including late or missed pay; never invent a future month. Use its actual calendar weekday count, never multiply by four or treat five as monthly days. Include workWeek in JSON. Keep existing goals and their funding intact. Do not invent income when the user has not supplied it. Return JSON with salary,daily,days,data (company/off, full, half, custom),dataRequested,dataReserve,dataMonthsRemaining,midnight,savings,bulk,outside,wardrobe,partner,wishes (only NEW wishes: name,cost,contribution),explanation. All money is GH cedis, nonnegative with 2 decimals. Preserve current settings unless user requests a change. Transport=daily*actual calendar workdays selected in workWeek. days is that monthly count, not weekly count. Data is OFF by default (company). Only enable if requested, never assume monthly recurring data. dataRequested can be any amount; dataReserve is what actually fits. company means dataReserve=0, midnight=0, dataMonthsRemaining=0. full/half/custom use dataRequested (399 or 200 are optional shortcuts), dataMonthsRemaining 1 or 2. Reserve commute first, protect feeding (offline baseline up to 45% of salary), then optional affordable data and savings up to 15%. On low pay reduce savings and lifestyle to zero as necessary. Midnight is optional 0-50 only with data on. Sum savings+transport+data+midnight+bulk+outside+wardrobe+partner+all existing unbought wish contributions+new wish contributions MUST be <=salary. Never change funded or bought records. Do not repeat existing wishes. Contribution cannot exceed cost. Explain account changes with amounts versus currentPlan and tradeoffs. Do not claim real bank transfers. If essentials exceed salary return all discretionary zero and explain infeasibility.",
         responseMimeType: "application/json",
         responseJsonSchema: {
           type: "object",
           properties: {
             ...(conversation ? { replyOnly: { type: "boolean" } } : {}),
+            ...(conversation ? { memoryUpdates: { type: "array", items: { type: "string" } } } : {}),
             salary: { type: "number" },
             daily: { type: "number" },
             days: { type: "integer" },
@@ -190,6 +193,7 @@ async function generatePlan({ apiKey, prompt, current, generate, conversation = 
           },
           required: [
             ...(conversation ? ["replyOnly"] : []),
+            ...(conversation ? ["memoryUpdates"] : []),
             "salary",
             "daily",
             "days",
@@ -213,11 +217,42 @@ async function generatePlan({ apiKey, prompt, current, generate, conversation = 
 
     if (conversation) {
       const result = JSON.parse(response.text);
+      const memoryUpdates = memoryUpdateSchema.array().max(3).catch([]).parse(result.memoryUpdates ?? []);
       if (result.replyOnly === true) {
-        return { reply: z.string().trim().min(1).max(12000).parse(result.explanation) };
+        return { reply: z.string().trim().min(1).max(12000).parse(result.explanation), memoryUpdates };
       }
+      return { ...parsePlanResponse(p, response.text), memoryUpdates };
     }
     return parsePlanResponse(p, response.text);
+  } catch (e) {
+    throw new Error(formatGeminiError(e, apiKey));
+  }
+}
+async function transcribeAudio({ apiKey, audio, mimeType, generate }) {
+  try {
+    const bytes = Buffer.from(audio || []);
+    const mime = String(mimeType || "").split(";")[0].trim().toLowerCase();
+    if (!bytes.length || bytes.length > 10 * 1024 * 1024)
+      throw new Error("The recording is empty or too large. Try a shorter voice message.");
+    if (!["audio/webm", "audio/mp4", "audio/ogg", "audio/wav", "audio/mpeg", "audio/mp3"].includes(mime))
+      throw new Error("This recording format is not supported. Try recording again.");
+    const ai = generate
+      ? { models: { generateContent: generate } }
+      : new (await import("@google/genai")).GoogleGenAI({ apiKey });
+    const response = await ai.models.generateContent({
+      model: MODEL,
+      contents: [{
+        role: "user",
+        parts: [
+          { inlineData: { mimeType: mime, data: bytes.toString("base64") } },
+          { text: "Transcribe the speech exactly. Preserve the speaker's wording, English, Ghanaian English, names, and spoken amounts. Write numbers as digits. Return only the transcript, with no introduction or explanation." },
+        ],
+      }],
+      config: { httpOptions: { timeout: 90000 }, thinkingConfig: { thinkingLevel: "LOW" }, maxOutputTokens: 4096 },
+    });
+    const transcript = String(response.text || "").trim();
+    if (!transcript) throw new Error("Gemini returned an empty transcript. Try recording again.");
+    return transcript.slice(0, 6000);
   } catch (e) {
     throw new Error(formatGeminiError(e, apiKey));
   }
@@ -248,6 +283,7 @@ async function checkKey(apiKey, generate) {
 module.exports = {
   MODEL,
   generatePlan,
+  transcribeAudio,
   checkKey,
   parsePlanResponse,
   formatGeminiError,

@@ -52,6 +52,21 @@ function trusted(event) {
   )
     throw new Error("Untrusted sender");
 }
+function relevantMemoryNotes(notes, request) {
+  if (!Array.isArray(notes) || !request.trim()) return [];
+  const stop = new Set("about after again also and are can did do does for from have how into just like more most my what when where which with would you your tell said say remember work job employer shift pay change changed happened last this that month day ago on the the".split(" "));
+  const tokens = (text) => String(text).toLowerCase().match(/[a-z0-9]{3,}/g)?.filter((word) => !stop.has(word)) || [];
+  const query = new Set(tokens(request));
+  const ranked = notes.map((note, index) => {
+    const searchable = `${note.summary} ${note.createdAt} ${new Date(note.createdAt).toLocaleDateString("en-GH", { month: "long", year: "numeric" })}`;
+    const words = new Set(tokens(searchable));
+    let score = 0;
+    for (const token of query) if (words.has(token)) score++;
+    return { note, index, score };
+  }).filter((entry) => entry.score > 0).sort((a, b) => b.score - a.score || b.note.createdAt.localeCompare(a.note.createdAt));
+  const selected = ranked.length ? ranked.slice(0, 12).map((entry) => entry.note) : [...notes].slice(0, 4);
+  return selected.map(({ summary, createdAt }) => ({ summary, createdAt }));
+}
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
@@ -204,15 +219,29 @@ if (!app.requestSingleInstanceLock()) {
       trusted(e);
       return require("./gemini.cjs").checkKey(await savedGeminiKey());
     });
-    ipcMain.handle("ai:plan", async (e, prompt, current) => {
+    ipcMain.handle("ai:plan", async (e, prompt, current, userMessage) => {
       trusted(e);
+      const latestUserMessage = z.string().max(6000).catch("").parse(userMessage ?? "");
       const saved = await enqueue(() => vaultStorage.read());
       return require("./gemini.cjs").generatePlan({
-        appContext: saved ? { savingsBalance: saved.savingsBalance, selfDebt: saved.debt, savedPaydayMonth: saved.plan.month, savedSalary: saved.plan.salary, displayCurrency: saved.displayCurrency ?? "GHS", exchangeRates: saved.exchangeRates ?? null, currentMonth: new Date().toLocaleDateString("en-CA", {timeZone:"Africa/Accra",year:"numeric",month:"2-digit"}) } : null,
+        appContext: { ...(saved ? { savingsBalance: saved.savingsBalance, selfDebt: saved.debt, savedPaydayMonth: saved.plan.month, savedSalary: saved.plan.salary, displayCurrency: saved.displayCurrency ?? "GHS", exchangeRates: saved.exchangeRates ?? null, currentMonth: new Date().toLocaleDateString("en-CA", {timeZone:"Africa/Accra",year:"numeric",month:"2-digit"}) } : {}), memoryEnabled: saved?.memoryEnabled !== false, memoryNotes: saved?.memoryEnabled === false ? [] : relevantMemoryNotes(saved?.memory, latestUserMessage) },
         conversation: true,
         apiKey: await savedGeminiKey(),
         prompt,
         current,
+        latestUserMessage,
+      });
+    });
+    ipcMain.handle("ai:transcribe", async (e, audio, mimeType) => {
+      trusted(e);
+      if (!(audio instanceof Uint8Array) || audio.byteLength > 10 * 1024 * 1024)
+        throw new Error("The recording is empty or too large. Try a shorter voice message.");
+      if (typeof mimeType !== "string" || mimeType.length > 100)
+        throw new Error("This recording format is not supported.");
+      return require("./gemini.cjs").transcribeAudio({
+        apiKey: await savedGeminiKey(),
+        audio,
+        mimeType,
       });
     });
     const create = () => {
@@ -238,9 +267,21 @@ if (!app.requestSingleInstanceLock()) {
       win.webContents.on("will-navigate", (e, url) => {
         if (url !== win.webContents.getURL()) e.preventDefault();
       });
-      win.webContents.session.setPermissionRequestHandler((_wc, _p, cb) =>
-        cb(false),
+      const session = win.webContents.session;
+      const allowedOrigin = (origin) => {
+        try {
+          const parsed = new URL(origin);
+          return dev ? parsed.origin === "http://127.0.0.1:5173" : parsed.protocol === "file:";
+        } catch { return false; }
+      };
+      session.setPermissionCheckHandler((contents, permission, origin) =>
+        permission === "media" && contents === win.webContents && allowedOrigin(origin),
       );
+      session.setPermissionRequestHandler((contents, permission, cb, details) => {
+        const media = details?.mediaTypes;
+        const audioOnly = Array.isArray(media) && media.includes("audio") && !media.includes("video");
+        cb(permission === "media" && contents === win.webContents && allowedOrigin(details?.securityOrigin || "") && audioOnly);
+      });
       win.webContents.session.webRequest.onHeadersReceived((details, cb) =>
         cb({
           responseHeaders: {

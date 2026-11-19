@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld("payday", {
   save: (v) => ipcRenderer.invoke("vault:save", v),
   checkKey: () => ipcRenderer.invoke("key:check"),
   setKey: (k) => ipcRenderer.invoke("key:set", k),
-  ai: (prompt, plan) => ipcRenderer.invoke("ai:plan", prompt, plan),
+  ai: (prompt, plan, latestUserMessage) => ipcRenderer.invoke("ai:plan", prompt, plan, latestUserMessage),
+  transcribe: (audio, mimeType) => ipcRenderer.invoke("ai:transcribe", audio, mimeType),
   export: () => ipcRenderer.invoke("vault:export"),
 });
